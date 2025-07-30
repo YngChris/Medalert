@@ -1,20 +1,44 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginScreen from './LoginScreen';
+import SignupScreen from './SignupScreen';
+import ForgotPasswordScreen from './ForgotPasswordScreen';
+import HomeScreen from './HomeScreen';
+import SettingsScreen from './SettingsScreen';
+import { ReportformScreen } from './ReportformScreen';
+import { LocationsScreen } from './LocationsScreen';
+import { AlertsScreen } from './AlertsScreen';
+import { EducationScreen } from './EducationScreen';
+import { ForumScreen } from './ForumScreen';
+import { MyReportsScreen } from './MyReportsScreen'; 
+import { RecycleBinScreen } from './RecycleBinScreen'; 
+import ProfileScreen from './ProfileScreen';
+import EditProfileScreen from './EditProfileScreen';
+
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+  return ( 
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Login">
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Report" component={MyReportsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ReportForm" component={ReportformScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Locations" component={LocationsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Alerts" component={AlertsScreen} options={{ headershown: false }} />
+        <Stack.Screen name="Education" component={EducationScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Forum" component={ForumScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="RecycleBin" component={RecycleBinScreen} options={{ headerShown: false }}/>
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile', headerBackTitle: 'Back' }}/>
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+ 
