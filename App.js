@@ -7,7 +7,7 @@ import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import { ReportformScreen } from "./src/screens/ReportformScreen";
-import { LocationsScreen } from "./src/screens/LocationsScreen";
+import LocationsScreen from "./src/screens/LocationsScreen";
 import { AlertsScreen } from "./src/screens/AlertsScreen";
 import { EducationScreen } from "./src/screens/EducationScreen";
 import { ForumScreen } from "./src/screens/ForumScreen";
@@ -15,7 +15,10 @@ import { MyReportsScreen } from "./src/screens/MyReportsScreen";
 import { RecycleBinScreen } from "./src/screens/RecycleBinScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
-
+import ReplyScreen from "./src/screens/ReplyScreen";
+import DiscussionScreen from "./src/screens/DiscussionsScreen";
+import { ContentDetailScreen } from "./src/screens/ContentScreem";
+import BarcodeScannerScreen from "./src/screens/BarcodeScannerScreen";
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -88,6 +91,21 @@ export default function App() {
           options={{ title: "Profile", headerBackTitle: "Back" }}
         />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen
+          name="Reply"
+          component={ReplyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="Discussion" component={DiscussionScreen} />
+        <Stack.Screen
+          name="ContentDetail"
+          component={ContentDetailScreen}
+          options={{ title: "Details" }}
+        />
+        <Stack.Screen
+          name="BarcodeScannerScreen"
+          component={BarcodeScannerScreen}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

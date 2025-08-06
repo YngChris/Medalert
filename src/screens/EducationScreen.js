@@ -1,7 +1,14 @@
 import React from 'react';
-import {View, Text, ScrollView, StyleSheet, TouchableOpacity, ImageBackground} from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ImageBackground,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { useNavigation } from '@react-navigation/native'; // Added navigation import
+import { useNavigation } from '@react-navigation/native';
 
 const contentSections = [
   {
@@ -55,22 +62,28 @@ const contentSections = [
 ];
 
 export const EducationScreen = () => {
-  const navigation = useNavigation(); // Hook for navigation
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-     <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Home')}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('Home')}>
           <Icon name="arrow-left" size={24} color="#111418" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Education</Text>
         <View style={{ width: 48 }} />
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      {/* Scrollable Educational Sections */}
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 100 }}>
         {contentSections.map((section, index) => (
-          <View key={index} style={styles.contentSection}>
+          <TouchableOpacity
+            key={index}
+            style={styles.contentSection}
+            onPress={() => navigation.navigate('ContentDetail', { section })}>
             <View style={styles.textContainer}>
               <Text style={styles.contentType}>{section.type}</Text>
               <Text style={styles.contentTitle}>{section.title}</Text>
@@ -81,33 +94,45 @@ export const EducationScreen = () => {
               style={styles.imageBackground}
               imageStyle={styles.imageStyle}
             />
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Footer Navigation */}
+      {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Report')}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate('Report')}>
           <Icon name="file-plus" size={24} color="#637588" />
           <Text style={styles.footerButtonText}>Reports</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Locations')}>
+
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate('Locations')}>
           <Icon name="map-pin" size={24} color="#637588" />
           <Text style={styles.footerButtonText}>Locations</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Alerts')}>
+
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate('Alerts')}>
           <Icon name="bell" size={24} color="#637588" />
           <Text style={styles.footerButtonText}>Alerts</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.footerButton, styles.footerButtonActive]} onPress={() => navigation.navigate('Education')}>
+
+        <TouchableOpacity
+          style={[styles.footerButton, styles.footerButtonActive]}
+          onPress={() => navigation.navigate('Education')}>
           <Icon name="book-open" size={24} color="#111418" />
-          <Text style={[styles.footerButtonText, styles.footerButtonTextActive]}>Education</Text>
+          <Text style={[styles.footerButtonText, styles.footerButtonTextActive]}>
+            Education
+          </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Forum')}>
+
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate('Forum')}>
           <Icon name="users" size={24} color="#637588" />
           <Text style={styles.footerButtonText}>Forum</Text>
         </TouchableOpacity>
@@ -128,15 +153,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: '#ffffff',
-    paddingTop:40,
+    paddingTop: 40,
   },
   iconButton: {
     width: 48,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop:20,
-    paddingRight:20,
+    paddingTop: 20,
+    paddingRight: 20,
   },
   headerTitle: {
     flex: 1,
@@ -144,7 +169,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 20,
     color: '#111418',
-    paddingTop:20,
+    paddingTop: 20,
   },
   scrollView: {
     flex: 1,
@@ -185,6 +210,7 @@ const styles = StyleSheet.create({
   },
   imageStyle: {
     borderRadius: 12,
+    resizeMode: 'cover',
   },
   footer: {
     flexDirection: 'row',
@@ -199,7 +225,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  footerButtonActive: {},
+  footerButtonActive: {
+    backgroundColor: '#f0f2f4',
+    borderRadius: 12,
+    paddingVertical: 6,
+  },
   footerButtonText: {
     color: '#637588',
     fontSize: 12,

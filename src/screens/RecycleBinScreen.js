@@ -73,7 +73,7 @@ export const RecycleBinScreen = () => {
 
         {deletedReports.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No deleted reports.</Text>
+            <Text style={styles.emptyText}>Recycle Bin Empty</Text>
           </View>
         ) : (
           <ScrollView style={styles.list}>
