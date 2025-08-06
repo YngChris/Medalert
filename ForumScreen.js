@@ -11,20 +11,21 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 
-const trendingTopics = [
-  { title: 'Safe Disposal of Medications', posts: 120 },
-  { title: 'Understanding Drug Interactions', posts: 85 },
-  { title: 'Finding Affordable Alternatives', posts: 60 },
+const initialDiscussions = [
+  { id: 1, title: 'New Guidelines on Antibiotic Use', author: 'Dr. Amelia Harper', time: '2 days ago', isNew: true, upvotes: 0, downvotes: 0 },
+  { id: 2, title: 'Experiences with Generic Medications', author: 'Ethan Bennett', time: '4 days ago', isNew: false, upvotes: 0, downvotes: 0 },
+  { id: 3, title: 'Managing Side Effects of Common Drugs', author: 'Sophia Carter', time: '1 week ago', isNew: false, upvotes: 0, downvotes: 0 },
 ];
 
-const recentDiscussions = [
-  { title: 'New Guidelines on Antibiotic Use', author: 'Dr. Amelia Harper', time: '2 days ago' },
-  { title: 'Experiences with Generic Medications', author: 'Ethan Bennett', time: '4 days ago' },
-  { title: 'Managing Side Effects of Common Drugs', author: 'Sophia Carter', time: '1 week ago' },
+const trendingTopics = [
+  { title: 'Safe Disposal of Medications', posts: 120, isNew: true },
+  { title: 'Understanding Drug Interactions', posts: 85, isNew: false },
+  { title: 'Finding Affordable Alternatives', posts: 60, isNew: true },
 ];
 
 export const ForumScreen = () => {
   const [searchText, setSearchText] = useState('');
+  const [discussions, setDiscussions] = useState(initialDiscussions);
   const navigation = useNavigation();
 
   const handleTopicPress = (title) => {
@@ -34,6 +35,26 @@ export const ForumScreen = () => {
   const handleAddTopic = () => {
     Alert.alert('Add New Topic', 'This will open the add-topic screen.');
   };
+
+  const handleUpvote = (id) => {
+    setDiscussions((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, upvotes: d.upvotes + 1 } : d))
+    );
+  };
+
+  const handleDownvote = (id) => {
+    setDiscussions((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, downvotes: d.downvotes + 1 } : d))
+    );
+  };
+
+  const filteredTrendingTopics = trendingTopics.filter((topic) =>
+    topic.title.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const filteredDiscussions = discussions.filter((d) =>
+    d.title.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
@@ -58,9 +79,9 @@ export const ForumScreen = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 80 }}>
         <Text style={styles.sectionTitle}>Trending Topics</Text>
-        {trendingTopics.map((topic, index) => (
+        {filteredTrendingTopics.map((topic, index) => (
           <TouchableOpacity key={index} onPress={() => handleTopicPress(topic.title)}>
             <View style={styles.topicItem}>
               <View style={styles.topicIconContainer}>
@@ -70,13 +91,14 @@ export const ForumScreen = () => {
                 <Text style={styles.topicTitle} numberOfLines={1}>{topic.title}</Text>
                 <Text style={styles.topicPosts}>{topic.posts} posts</Text>
               </View>
+              {topic.isNew && <View style={styles.badge}><Text style={styles.badgeText}>New</Text></View>}
             </View>
           </TouchableOpacity>
         ))}
 
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Recent Discussions</Text>
-        {recentDiscussions.map((discussion, index) => (
-          <TouchableOpacity key={index} onPress={() => handleTopicPress(discussion.title)}>
+        {filteredDiscussions.map((discussion) => (
+          <TouchableOpacity key={discussion.id} onPress={() => handleTopicPress(discussion.title)}>
             <View style={styles.topicItem}>
               <View style={styles.topicIconContainer}>
                 <Icon name="hash" size={24} color="#111418" />
@@ -86,16 +108,37 @@ export const ForumScreen = () => {
                 <Text style={styles.topicPosts}>
                   By {discussion.author} · {discussion.time}
                 </Text>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleUpvote(discussion.id)}
+                  >
+                    <Icon name="thumbs-up" size={16} color="#197ce5" />
+                    <Text style={styles.voteCount}>{discussion.upvotes}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleDownvote(discussion.id)}
+                  >
+                    <Icon name="thumbs-down" size={16} color="#ff4d4f" />
+                    <Text style={[styles.voteCount, { color: '#ff4d4f' }]}>{discussion.downvotes}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => navigation.navigate('Reply', { topicTitle: discussion.title })}
+                  >
+                    <Icon name="message-circle" size={16} color="#197ce5" />
+                    <Text style={styles.actionButtonText}>Reply</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+              {discussion.isNew && <View style={styles.badge}><Text style={styles.badgeText}>New</Text></View>}
             </View>
           </TouchableOpacity>
         ))}
-
-        <View style={styles.addButtonContainer}>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddTopic}>
-            <Icon name="plus" size={24} color="#ffffff" />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -129,10 +172,7 @@ export const ForumScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
+  container: { flex: 1, backgroundColor: '#ffffff' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,7 +180,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: '#ffffff',
-    paddingTop:40,
+    paddingTop: 40,
   },
   iconButton: {
     width: 48,
@@ -148,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 20,
-    paddingRight:10,
+    paddingRight: 10,
   },
   headerTitle: {
     flex: 1,
@@ -159,10 +199,7 @@ const styles = StyleSheet.create({
     paddingRight: 10,
     paddingTop: 20,
   },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
+  searchContainer: { paddingHorizontal: 16, paddingVertical: 12 },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -171,17 +208,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 48,
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111418',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 16, color: '#111418' },
+  scrollView: { flex: 1 },
   sectionTitle: {
     fontWeight: '700',
     fontSize: 18,
@@ -191,7 +220,7 @@ const styles = StyleSheet.create({
   },
   topicItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#ffffff',
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -207,33 +236,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  topicTextContainer: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  topicTitle: {
-    fontWeight: '500',
-    fontSize: 16,
-    color: '#111418',
-  },
+  topicTextContainer: { flex: 1, flexDirection: 'column' },
+  topicTitle: { fontWeight: '500', fontSize: 16, color: '#111418' },
   topicPosts: {
     fontWeight: '400',
     fontSize: 14,
     color: '#637588',
     marginTop: 4,
   },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  actionButtonText: {
+    marginLeft: 4,
+    fontSize: 13,
+    color: '#197ce5',
+    fontWeight: '500',
+  },
+  voteCount: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#197ce5',
+  },
+  badge: {
+    backgroundColor: '#ff4d4f',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignSelf: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+  },
   addButtonContainer: {
     padding: 16,
     alignItems: 'flex-end',
   },
-  addButton: {
-    backgroundColor: '#197ce5',
-    borderRadius: 12,
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+ 
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -242,9 +291,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
   },
-  footerButton: {
-    alignItems: 'center',
-  },
+  footerButton: { alignItems: 'center' },
   footerButtonText: {
     fontSize: 12,
     color: '#637588',
@@ -254,4 +301,5 @@ const styles = StyleSheet.create({
     color: '#111418',
     fontWeight: '600',
   },
+  footerButtonActive: {},
 });

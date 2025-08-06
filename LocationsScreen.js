@@ -1,60 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
-  ImageBackground,
-  Platform,
-  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
+import MapView, { Marker } from 'react-native-maps';
 
-export const LocationsScreen = () => {
+const locationsData = [
+  { id: '1', name: 'Pharmacy A', status: 'Flagged', lat: 5.6037, lng: -0.1870 },
+  { id: '2', name: 'Clinic B', status: 'Under Review', lat: 5.6090, lng: -0.1900 },
+  { id: '3', name: 'Hospital C', status: 'Flagged', lat: 5.6105, lng: -0.1850 },
+  { id: '4', name: 'Wellness Center D', status: 'Clear', lat: 5.6150, lng: -0.2000 },
+];
+
+const LocationsScreen = () => {
   const navigation = useNavigation();
+  const mapRef = useRef(null);
+
   const [mainSearchText, setMainSearchText] = useState('');
   const [mapSearchText, setMapSearchText] = useState('');
 
-  // Mock current tab (in a real app, use state or navigation context)
-  const currentTab = 'Locations';
+  const filteredLocations = locationsData.filter(location =>
+    location.name.toLowerCase().includes(mainSearchText.toLowerCase())
+  );
+
+  const handleMapSearch = () => {
+    const match = locationsData.find(loc =>
+      loc.name.toLowerCase().includes(mapSearchText.toLowerCase())
+    );
+    if (match && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: match.lat,
+          longitude: match.lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        1000
+      );
+    }
+  };
 
   const handleAddLocation = () => {
-    Alert.alert('Add Location', 'This will open the add location flow.');
+    // Add logic to navigate or open form
+    alert('Add new location action');
   };
 
   const handleRemoveLocation = () => {
-    Alert.alert('Remove Location', 'This will allow you to remove flagged locations.');
+    // Add logic to remove selected location
+    alert('Remove location action');
   };
 
   const handleNavigate = () => {
-    Alert.alert('Navigate', 'This will trigger map navigation.');
-  };
-
-  const handleFooterPress = (tabName) => {
-    Alert.alert(`${tabName}`, `Navigating to ${tabName} screen...`);
-    // navigation.navigate(tabName); // Uncomment if using actual screens
+    // Add navigation logic
+    alert('Navigate action');
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Home')}>
-          <Icon name="arrow-left" size={24} color="#111418" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Flagged Locations</Text>
-        <View style={{ width: 48 }} />
-      </View>
+      <Text style={styles.heading}>Locations</Text>
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
+      <View style={styles.searchSection}>
         <View style={styles.searchInputWrapper}>
           <Icon name="search" size={24} color="#637588" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for locations"
+            placeholder="Search locations"
             placeholderTextColor="#637588"
             value={mainSearchText}
             onChangeText={setMainSearchText}
@@ -62,26 +78,42 @@ export const LocationsScreen = () => {
         </View>
       </View>
 
-      {/* Large Background Section */}
-      <ImageBackground
-        source={{
-          uri:
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuCBGj1UBoQthAkbzaa9eH1src5EeGL2qdFGtRXVOzwaNOcbMxiSwgz1g3-YtchohahFZmFfzNQuOHfgeP4yz6o3_lH_pHQN7RB4DjvSj7jR5csfSuUKUncqC6NobQmsfBvuvsg5QUVvXjP9GMs_XyCmuFZY00U6ZN1kxxnA25Fd7U76TqDWU53n8Ujp3-ToVu6l3446cBxJIizBQNVSZkhlyx7wnOTiSXjVxgaxsC1V67WcXA35euUQVvHHTUf4ILqlHpXYOUtI-tM',
-        }}
-        style={styles.backgroundSection}
-        imageStyle={styles.backgroundImage}
-      >
-        <View style={styles.backgroundSearchContainer}>
+      <View style={styles.mapContainer}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={{
+            latitude: 5.6037,
+            longitude: -0.1870,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
+        >
+          {filteredLocations.map(location => (
+            <Marker
+              key={location.id}
+              coordinate={{ latitude: location.lat, longitude: location.lng }}
+              title={location.name}
+              description={location.status}
+            />
+          ))}
+        </MapView>
+
+        <View style={styles.mapOverlay}>
           <View style={styles.backgroundSearchInputWrapper}>
             <Icon name="search" size={24} color="#637588" style={styles.searchIcon} />
             <TextInput
               style={styles.backgroundSearchInput}
-              placeholder="Search for locations"
+              placeholder="Search on map"
               placeholderTextColor="#637588"
               value={mapSearchText}
-              onChangeText={setMapSearchText}
+              onChangeText={text => {
+                setMapSearchText(text);
+                handleMapSearch();
+              }}
             />
           </View>
+
           <View style={styles.backgroundButtons}>
             <TouchableOpacity style={styles.backgroundButton} onPress={handleAddLocation}>
               <Icon name="plus" size={24} color="#111418" />
@@ -90,91 +122,50 @@ export const LocationsScreen = () => {
               <Icon name="minus" size={24} color="#111418" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.backgroundButton} onPress={handleNavigate}>
-              <Icon
-                name="navigation"
-                size={24}
-                color="#111418"
-                style={{ transform: [{ scaleX: -1 }] }}
-              />
+              <Icon name="navigation" size={24} color="#111418" style={{ transform: [{ scaleX: -1 }] }} />
             </TouchableOpacity>
           </View>
         </View>
-      </ImageBackground>
-
-      {/* Footer Navigation */}
-      <View style={styles.footer}>
-       <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Report')}>
-        <Icon name="file-plus" size={24} color="#637588" />
-        <Text style={styles.footerButtonText}>Reports</Text>
-       </TouchableOpacity>
-       
-       <TouchableOpacity style={[styles.footerButton, styles.footerButtonActive]} onPress={() => navigation.navigate('Locations')}>
-        <Icon name="map-pin" size={24} color="#111418" />
-        <Text style={[styles.footerButtonText, styles.footerButtonTextActive]}>Locations</Text>
-       </TouchableOpacity>
-       
-       <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Alerts')}>
-        <Icon name="bell" size={24} color="#637588" />
-        <Text style={styles.footerButtonText}>Alerts</Text>
-       </TouchableOpacity>
-       
-       <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Education')}>
-        <Icon name="book-open" size={24} color="#637588" />
-        <Text style={styles.footerButtonText}>Education</Text>
-       </TouchableOpacity>
-       
-       <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Forum')}>
-        <Icon name="users" size={24} color="#111418" />
-        <Text style={styles.footerButtonText}>Forum</Text>
-       </TouchableOpacity>
       </View>
+
+      <ScrollView style={{ flex: 1, marginHorizontal: 16 }}>
+        {filteredLocations.map(item => (
+          <View key={item.id} style={styles.locationCard}>
+            <Text style={styles.locationName}>{item.name}</Text>
+            <Text style={styles.locationStatus}>{item.status}</Text>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 };
 
+export default LocationsScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
+    paddingTop: 32,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
-    paddingTop: 40,
-  },
-  iconButton: {
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop:22,
-    paddingRight:10,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontWeight: '700',
-    fontSize: 20,
+  heading: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#111418',
-    paddingTop:20,
-    paddingRight: 10,
-
-  },
-  searchContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f2f4',
+    backgroundColor: '#f2f4f7',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
+    height: 48,
   },
   searchIcon: {
     marginRight: 8,
@@ -184,86 +175,71 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111418',
   },
-  backgroundSection: {
-    flex: 1,
+  mapContainer: {
+    height: 300,
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    justifyContent: 'flex-end',
   },
-  backgroundImage: {
-    borderRadius: 16,
+  map: {
+    ...StyleSheet.absoluteFillObject,
   },
-  backgroundSearchContainer: {
+  mapOverlay: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 16,
+    padding: 12,
   },
   backgroundSearchInputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f2f4f7',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 48,
-    marginRight: 12,
+    height: 44,
   },
   backgroundSearchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#111418',
   },
   backgroundButtons: {
-    flexDirection: 'column',
-    justifyContent: 'space-between',
+    flexDirection: 'row',
+    marginLeft: 12,
   },
   backgroundButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#e0e4ea',
+    padding: 10,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  locationCard: {
+    backgroundColor: '#f9fafb',
+    padding: 12,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  footer: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f2f4',
-    backgroundColor: '#ffffff',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    justifyContent: 'space-around',
-  },
-  footerButton: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  footerButtonText: {
-    color: '#637588',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  footerButtonTextActive: {
+  locationName: {
+    fontWeight: '600',
+    fontSize: 16,
     color: '#111418',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
+  },
+  locationStatus: {
+    fontSize: 14,
+    color: '#637588',
+    marginTop: 4,
   },
 });

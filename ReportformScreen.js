@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Switch,
+  Alert,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import * as Location from 'expo-location';
 
 export const ReportformScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
 
   const [medicationName, setMedicationName] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
@@ -15,12 +26,14 @@ export const ReportformScreen = () => {
   const [reportAnonymously, setReportAnonymously] = useState(false);
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
-  const handleBack = () => navigation.goBack();
-  const handleSettings = () => navigation.navigate('SettingsScreen');
+  // Handle scanned barcode input
+  useEffect(() => {
+    if (route.params?.scannedData) {
+      setMedicationName(route.params.scannedData);
+    }
+  }, [route.params?.scannedData]);
 
-  const handleScanBarcode = () => {
-    Alert.alert('Scan Barcode', 'This would open the barcode scanner.');
-  };
+  const handleBack = () => navigation.goBack();
 
   const handleSubmit = () => {
     if (!medicationName || !expirationDate || !storeName || !location || !description) {
@@ -38,8 +51,11 @@ export const ReportformScreen = () => {
     };
 
     console.log('Report Submitted:', reportData);
-    Alert.alert('Success', 'Your report has been submitted.');
+    Alert.alert('Success', 'Your report has been submitted.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
 
+    // Reset form
     setMedicationName('');
     setExpirationDate('');
     setStoreName('');
@@ -53,10 +69,28 @@ export const ReportformScreen = () => {
 
   const handleConfirm = (date) => {
     const formattedDate = new Intl.DateTimeFormat('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     }).format(date);
     setExpirationDate(formattedDate);
     hideDatePicker();
+  };
+
+  const handleScanBarcode = () => {
+    navigation.navigate('BarcodeScannerScreen');
+  };
+
+  const fetchLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission denied', 'Location permission is required.');
+      return;
+    }
+
+    let locationData = await Location.getCurrentPositionAsync({});
+    const coords = locationData.coords;
+    setLocation(`Lat: ${coords.latitude.toFixed(4)}, Lon: ${coords.longitude.toFixed(4)}`);
   };
 
   return (
@@ -69,7 +103,7 @@ export const ReportformScreen = () => {
         <Text style={styles.headerTitle}>Report Medication</Text>
       </View>
 
-      {/* Form Fields */}
+      {/* Medication Name */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Medication Name</Text>
         <TextInput
@@ -81,6 +115,7 @@ export const ReportformScreen = () => {
         />
       </View>
 
+      {/* Expiration Date */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Expiration Date</Text>
         <View style={styles.dateInputContainer}>
@@ -100,8 +135,9 @@ export const ReportformScreen = () => {
         </View>
       </View>
 
+      {/* Store/Pharmacy */}
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Store/Pharmacy Name</Text>
+        <Text style={styles.label}>Store/Manufacturer Name</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter store or pharmacy name"
@@ -111,6 +147,7 @@ export const ReportformScreen = () => {
         />
       </View>
 
+      {/* Location */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Location</Text>
         <View style={styles.locationInputContainer}>
@@ -122,11 +159,14 @@ export const ReportformScreen = () => {
             onChangeText={setLocation}
           />
           <View style={styles.locationIconContainer}>
-            <Icon name="map-pin" size={24} color="#637588" />
+            <TouchableOpacity onPress={fetchLocation}>
+              <Icon name="map-pin" size={24} color="#637588" />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
 
+      {/* Description */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>Description</Text>
         <TextInput
@@ -141,7 +181,7 @@ export const ReportformScreen = () => {
         />
       </View>
 
-      {/* Barcode Scanner Button */}
+      {/* Barcode Button */}
       <View style={styles.barcodeButtonContainer}>
         <TouchableOpacity style={styles.barcodeButton} onPress={handleScanBarcode}>
           <Icon name="camera" size={20} color="#111418" />
@@ -167,13 +207,13 @@ export const ReportformScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Date Picker Modal */}
+      {/* Date Picker */}
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
         mode="date"
         onConfirm={handleConfirm}
         onCancel={hideDatePicker}
-        date={expirationDate ? new Date(expirationDate) : new Date()}
+        date={expirationDate ? new Date(Date.parse(expirationDate)) : new Date()}
       />
     </ScrollView>
   );
@@ -194,13 +234,13 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 10,
-    paddingTop:20,
+    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: '#111418',
-    paddingTop:9,
+    paddingTop: 9,
     paddingRight: 100,
   },
   formGroup: {
@@ -292,4 +332,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
