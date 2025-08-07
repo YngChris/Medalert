@@ -1,49 +1,78 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Switch, Image, ScrollView, ImageBackground,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Switch,
+  Image,
+  ScrollView,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Alert,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import Toast from "react-native-toast-message";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const { login } = useAuth();
 
-  const [emailOrUsername, setEmailOrUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // New state for validation errors
-  const [emailOrUsernameError, setEmailOrUsernameError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [emailOrUsernameError, setEmailOrUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
-  const HEADER_IMAGE_URI = useMemo(() => ({
-    uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkwxoamnqNPTkg3MmOncnFrtNFULzurA1NL7xGJ8UfraqnGv9nWZfWrI3snTZC2hYEP0ivU4n1EmKiJ4NvFwdePPKRomw-_awubyb1j2kxf8B8AA6IFcm_3icQRbReoW8pLpjrFOBAa6TviWhXs51zgf15ZYjCTn6fmo5hhY5ZVeWhadlnPkm7Idj8dw-V1y01cDwRv8iql19Hlkj5jnjvi7gHKVm-7pTrAVZ3lb3WFXSccuvSzvE3AUvZPCH2TEH798lfVoZ9JkM'
-  }), []);
+  // Email validation function
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const GOOGLE_LOGO_URI = useMemo(() => ({
-    uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png'
-  }), []);
+  const HEADER_IMAGE_URI = useMemo(
+    () => ({
+      uri: "https://lh3.googleusercontent.com/aida-public/AB6AXuDkwxoamnqNPTkg3MmOncnFrtNFULzurA1NL7xGJ8UfraqnGv9nWZfWrI3snTZC2hYEP0ivU4n1EmKiJ4NvFwdePPKRomw-_awubyb1j2kxf8B8AA6IFcm_3icQRbReoW8pLpjrFOBAa6TviWhXs51zgf15ZYjCTn6fmo5hhY5ZVeWhadlnPkm7Idj8dw-V1y01cDwRv8iql19Hlkj5jnjvi7gHKVm-7pTrAVZ3lb3WFXSccuvSzvE3AUvZPCH2TEH798lfVoZ9JkM",
+    }),
+    []
+  );
+
+  const GOOGLE_LOGO_URI = useMemo(
+    () => ({
+      uri: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png",
+    }),
+    []
+  );
 
   // Event Handlers
-  const onLoginPress = useCallback(() => {
+  const onLoginPress = useCallback(async () => {
     let valid = true;
 
     // Reset errors
-    setEmailOrUsernameError('');
-    setPasswordError('');
+    setEmailOrUsernameError("");
+    setPasswordError("");
 
     if (!emailOrUsername.trim()) {
-      setEmailOrUsernameError('Email or username is required');
+      setEmailOrUsernameError("Email or username is required");
       valid = false;
-    } else if (emailOrUsername.includes('@') && !isValidEmail(emailOrUsername)) {
-      setEmailOrUsernameError('Please enter a valid email address');
+    } else if (
+      emailOrUsername.includes("@") &&
+      !isValidEmail(emailOrUsername)
+    ) {
+      setEmailOrUsernameError("Please enter a valid email address");
       valid = false;
     }
 
     if (!password) {
-      setPasswordError('Password is required');
+      setPasswordError("Password is required");
       valid = false;
     }
 
@@ -51,31 +80,66 @@ const LoginScreen = () => {
       return;
     }
 
-    // Proceed with login logic here
-    console.log('Login pressed', { emailOrUsername, password, rememberMe });
-    navigation.navigate('Home');
+    try {
+      // Call the login API through context
+      const response = await login({
+        emailOrUsername,
+        password,
+        rememberMe,
+      });
+
+      console.log("Login response", response);
+
+      Toast.show({
+        type: "success",
+        text1: "Login successful!",
+        text2: `Welcome back, ${response.user?.firstName || "User"}!`,
+      });
+
+      // Navigate to Home
+      navigation.navigate("Home");
+    } catch (error) {
+      console.error("Login error:", error);
+
+      let errorMessage = "Login failed. Please try again.";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Toast.show({
+        type: "error",
+        text1: "Login Failed",
+        text2: errorMessage,
+      });
+    }
   }, [emailOrUsername, password, rememberMe, navigation]);
 
   const onGoogleSignInPress = () => {
-    console.log('Google Sign-In pressed');
+    console.log("Google Sign-In pressed");
   };
 
   const onForgotPasswordPress = () => {
-    navigation.navigate('ForgotPassword');
+    navigation.navigate("ForgotPassword");
   };
 
   const onSignUpPress = () => {
-    navigation.navigate('Signup');
+    navigation.navigate("Signup");
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           <ImageBackground
             source={HEADER_IMAGE_URI}
             style={styles.headerImageBackground}
@@ -88,7 +152,10 @@ const LoginScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email or Username</Text>
               <TextInput
-                style={[styles.input, emailOrUsernameError ? styles.inputError : null]}
+                style={[
+                  styles.input,
+                  emailOrUsernameError ? styles.inputError : null,
+                ]}
                 placeholder="Enter your email or username"
                 placeholderTextColor="#677583"
                 value={emailOrUsername}
@@ -97,7 +164,9 @@ const LoginScreen = () => {
                 keyboardType="email-address"
                 textContentType="username"
               />
-              {emailOrUsernameError ? <Text style={styles.errorText}>{emailOrUsernameError}</Text> : null}
+              {emailOrUsernameError ? (
+                <Text style={styles.errorText}>{emailOrUsernameError}</Text>
+              ) : null}
             </View>
 
             {/* Password */}
@@ -117,9 +186,13 @@ const LoginScreen = () => {
                 onPress={() => setShowPassword(!showPassword)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.toggleText}>
+                  {showPassword ? "Hide" : "Show"}
+                </Text>
               </TouchableOpacity>
-              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+              {passwordError ? (
+                <Text style={styles.errorText}>{passwordError}</Text>
+              ) : null}
             </View>
 
             {/* Remember Me Switch */}
@@ -128,13 +201,16 @@ const LoginScreen = () => {
               <Switch
                 value={rememberMe}
                 onValueChange={setRememberMe}
-                thumbColor={rememberMe ? '#d2e2f3' : '#f4f3f4'}
-                trackColor={{ false: '#dde0e4', true: '#d2e2f3' }}
+                thumbColor={rememberMe ? "#d2e2f3" : "#f4f3f4"}
+                trackColor={{ false: "#dde0e4", true: "#d2e2f3" }}
               />
             </View>
 
             {/* Forgot Password */}
-            <TouchableOpacity onPress={onForgotPasswordPress} style={styles.forgotPasswordContainer}>
+            <TouchableOpacity
+              onPress={onForgotPasswordPress}
+              style={styles.forgotPasswordContainer}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -144,14 +220,26 @@ const LoginScreen = () => {
             </TouchableOpacity>
 
             {/* Google Sign-in */}
-            <TouchableOpacity style={styles.googleButton} onPress={onGoogleSignInPress}>
-              <Image source={GOOGLE_LOGO_URI} style={styles.googleLogo} resizeMode="contain" />
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={onGoogleSignInPress}
+            >
+              <Image
+                source={GOOGLE_LOGO_URI}
+                style={styles.googleLogo}
+                resizeMode="contain"
+              />
               <Text style={styles.googleButtonText}>Sign in with Google</Text>
             </TouchableOpacity>
 
             {/* Sign Up */}
-            <TouchableOpacity onPress={onSignUpPress} style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Don't have an account? Sign Up</Text>
+            <TouchableOpacity
+              onPress={onSignUpPress}
+              style={styles.signUpContainer}
+            >
+              <Text style={styles.signUpText}>
+                Don't have an account? Sign Up
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -163,87 +251,87 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingVertical: 20,
     paddingHorizontal: 16,
   },
   headerImageBackground: {
-    width: '100%',
+    width: "100%",
     height: 218,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   headerImageStyle: {
     borderRadius: 12,
   },
   welcomeText: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 28,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
     marginVertical: 16,
   },
   formContainer: {
-    width: '100%',
+    width: "100%",
   },
   inputGroup: {
     marginBottom: 16,
   },
   inputLabel: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#f1f2f4',
+    backgroundColor: "#f1f2f4",
     borderRadius: 20,
     height: 56,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: '#121417',
+    color: "#121417",
   },
   rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   rememberMeText: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 16,
   },
   forgotPasswordContainer: {
     marginBottom: 20,
   },
   forgotPasswordText: {
-    color: '#677583',
+    color: "#677583",
     fontSize: 14,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   loginButton: {
-    backgroundColor: '#d2e2f3',
+    backgroundColor: "#d2e2f3",
     borderRadius: 20,
     height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   loginButtonText: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   googleButton: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
     paddingHorizontal: 20,
     gap: 8,
@@ -253,37 +341,37 @@ const styles = StyleSheet.create({
     height: 24,
   },
   googleButtonText: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   signUpContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   signUpText: {
-    color: '#677583',
+    color: "#677583",
     fontSize: 14,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   inputError: {
-    borderColor: 'red',
+    borderColor: "red",
     borderWidth: 1,
   },
   errorText: {
-    color: 'red',
+    color: "red",
     fontSize: 12,
     marginTop: 4,
   },
   passwordToggle: {
-    position: 'absolute',
+    position: "absolute",
     right: 16,
     top: 38,
     padding: 4,
   },
   toggleText: {
-    color: '#677583',
+    color: "#677583",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
