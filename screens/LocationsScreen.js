@@ -1,12 +1,5 @@
 import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity,} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import MapView, { Marker } from 'react-native-maps';
@@ -136,7 +129,30 @@ const LocationsScreen = () => {
           </View>
         ))}
       </ScrollView>
-    </View>
+        {/* Footer Navigation */}
+              <View style={styles.footer}>
+                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Report')}>
+                  <Icon name="file-plus" size={24} color="#677583" />
+                  <Text style={styles.footerButtonText}>Reports</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.footerButton, styles.footerButtonActive]} onPress={() => navigation.navigate('Locations')}>
+                  <Icon name="map-pin" size={24} color="#121417" />
+                  <Text style={[styles.footerButtonText, styles.footerButtonTextActive]}>Locations</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Alerts')}>
+                  <Icon name="bell" size={24} color="#677583" /> 
+                  <Text style={styles.footerButtonText}>Alerts</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Education')}>
+                  <Icon name="book-open" size={24} color="#677583" />
+                  <Text style={styles.footerButtonText}>Education</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Forum')}>
+                  <Icon name="users" size={24} color="#677583" />
+                  <Text style={styles.footerButtonText}>Forum</Text>
+                </TouchableOpacity>
+              </View>
+    </View> 
   );
 };
 
@@ -242,4 +258,24 @@ const styles = StyleSheet.create({
     color: '#637588',
     marginTop: 4,
   },
+  footer: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f2f4',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    justifyContent: 'space-around',
+  },
+  footerButton: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  footerButtonText: {
+    color: '#121417',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  footerButtonActive: {},
 });

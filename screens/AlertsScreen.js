@@ -184,4 +184,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  footerButtonActive: {},
 });

@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/Feather';
+import ProfileDetails from '../components/ProfileDetails';
 
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState({
@@ -44,21 +52,15 @@ const ProfileScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.avatar}>
-        <Icon name="user" size={48} color="#555" />
-      </View>
-      <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
-      <Text style={styles.email}>{user.email}</Text>
-
-      <View style={styles.infoBox}>
-        <Text style={styles.label}>Phone Number</Text>
-        <Text style={styles.value}>{user.phoneNumber}</Text>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Icon name="arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Profile</Text>
       </View>
 
-      <View style={styles.infoBox}>
-        <Text style={styles.label}>Location</Text>
-        <Text style={styles.value}>{user.location}</Text>
-      </View>
+      <ProfileDetails form={user} editable={false} />
 
       <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
         <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -69,50 +71,28 @@ const ProfileScreen = ({ navigation }) => {
 
 export default ProfileScreen;
 
-// Your original styles stay the same
-
-
 const styles = StyleSheet.create({
   container: {
     padding: 20,
     backgroundColor: '#fff',
     flexGrow: 1,
-    alignItems: 'center',
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#e6e6e6',
-    borderRadius: 50,
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    marginBottom: 50,
+    paddingTop:30,
   },
-  name: {
-    fontSize: 20,
+  backButton: {
+    marginRight: 12,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 30,
     fontWeight: 'bold',
-    color: '#333',
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 30,
-  },
-  infoBox: {
-    width: '100%',
-    marginBottom: 15,
-    padding: 15,
-    borderRadius: 8,
-    backgroundColor: '#f7f7f7',
-  },
-  label: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 15,
-    color: '#333',
+    paddingLeft: 75,
+    alignItems: 'center'
   },
   editButton: {
     marginTop: 20,

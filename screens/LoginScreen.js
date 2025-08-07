@@ -1,9 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Switch, Image, ScrollView, ImageBackground,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Switch, Image, ScrollView, ImageBackground, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 const LoginScreen = () => {

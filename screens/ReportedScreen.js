@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, Alert, ScrollView,} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 const ReportformScreen = () => {

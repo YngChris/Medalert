@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  ImageBackground,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ImageBackground,} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 
@@ -225,11 +218,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  footerButtonActive: {
-    backgroundColor: '#f0f2f4',
-    borderRadius: 12,
-    paddingVertical: 6,
-  },
   footerButtonText: {
     color: '#637588',
     fontSize: 12,
@@ -238,5 +226,6 @@ const styles = StyleSheet.create({
   },
   footerButtonTextActive: {
     color: '#111418',
+    fontWeight: '700',
   },
 });

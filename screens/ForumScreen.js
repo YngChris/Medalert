@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert,} from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 
@@ -278,28 +270,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  addButtonContainer: {
-    padding: 16,
-    alignItems: 'flex-end',
-  },
- 
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#f1f2f4',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    justifyContent: 'space-around',
   },
-  footerButton: { alignItems: 'center' },
+  footerButton: {
+    alignItems: 'center',
+    flex: 1,  
+  },
   footerButtonText: {
+    color: '#677583',
     fontSize: 12,
-    color: '#637588',
-    marginTop: 4,
+    fontWeight: '500',
+    marginTop: 2,
   },
   footerButtonTextActive: {
     color: '#111418',
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  footerButtonActive: {},
 });
