@@ -1,15 +1,29 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert,} from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import PhoneInput from 'react-native-phone-number-input';
-import Toast from 'react-native-toast-message';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import React, { useState, useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import PhoneInput from "react-native-phone-number-input";
+import Toast from "react-native-toast-message";
+import { useAuth } from "../context/AuthContext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const FormInput = ({ label, value, onChangeText, placeholder, error, ...props }) => (
+const FormInput = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  error,
+  ...props
+}) => (
   <View style={styles.singleInputContainer}>
     <Text style={styles.label}>{label}</Text>
     <TextInput
@@ -26,14 +40,15 @@ const FormInput = ({ label, value, onChangeText, placeholder, error, ...props })
 
 const SignupScreen = ({ navigation }) => {
   const phoneInput = useRef(null);
+  const { register } = useAuth();
 
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phoneNumber: '',
-    password: '',
-    location: '',
+    firstName: "",
+    lastName: "",
+    email: "",
+    phoneNumber: "",
+    password: "",
+    location: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -41,57 +56,60 @@ const SignupScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: '<YOUR_EXPO_CLIENT_ID>',
-    iosClientId: '<YOUR_IOS_CLIENT_ID>',
-    androidClientId: '<YOUR_ANDROID_CLIENT_ID>',
-    webClientId: '<YOUR_WEB_CLIENT_ID>',
-    scopes: ['profile', 'email'],
+    expoClientId: "<YOUR_EXPO_CLIENT_ID>",
+    iosClientId: "<YOUR_IOS_CLIENT_ID>",
+    androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
+    webClientId: "<YOUR_WEB_CLIENT_ID>",
+    scopes: ["profile", "email"],
   });
 
   useEffect(() => {
-    if (response?.type === 'success') {
+    if (response?.type === "success") {
       const { authentication } = response;
       if (authentication?.accessToken) {
         fetchUserInfo(authentication.accessToken);
       } else {
-        Alert.alert('Google Sign-In Error', 'No access token received');
+        Alert.alert("Google Sign-In Error", "No access token received");
       }
     }
   }, [response]);
 
   const fetchUserInfo = async (token) => {
     try {
-      const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+      const res = await fetch("https://www.googleapis.com/userinfo/v2/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       Toast.show({
-        type: 'success',
+        type: "success",
         text1: `Signed in as ${data.email}`,
       });
     } catch (err) {
-      Alert.alert('Error', 'Failed to fetch user info');
+      Alert.alert("Error", "Failed to fetch user info");
     }
   };
 
   const handleChange = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: '' }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validate = () => {
     const newErrors = {};
-    if (!form.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!form.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!form.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) newErrors.email = 'Invalid email address';
-    if (!form.password) newErrors.password = 'Password is required';
-    else if (form.password.length < 8) newErrors.password = 'Minimum 8 characters';
+    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
+    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
+    if (!form.email.trim()) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      newErrors.email = "Invalid email address";
+    if (!form.password) newErrors.password = "Password is required";
+    else if (form.password.length < 8)
+      newErrors.password = "Minimum 8 characters";
 
     const isPhoneValid = phoneInput.current?.isValidNumber(
-      phoneInput.current?.getNumberAfterPossiblyEliminatingZero()?.formattedNumber
+      phoneInput.current?.getNumberAfterPossiblyEliminatingZero()
+        ?.formattedNumber
     );
-    if (!isPhoneValid) newErrors.phoneNumber = 'Invalid phone number';
+    if (!isPhoneValid) newErrors.phoneNumber = "Invalid phone number";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -102,36 +120,52 @@ const SignupScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // Store user data
-      await AsyncStorage.setItem('user', JSON.stringify({
+      // Call the register API through context
+      const response = await register({
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
         phoneNumber: form.phoneNumber,
+        password: form.password,
         location: form.location,
-      }));
+      });
+
+      console.log("Signup response", response);
 
       Toast.show({
-        type: 'success',
-        text1: 'Signup successful!',
+        type: "success",
+        text1: "Signup successful!",
+        text2: `Welcome, ${form.firstName}!`,
       });
 
-      // Navigate to Home and pass name
-      navigation.navigate('Home', {
-        user: {
-          firstName: form.firstName,
-          lastName: form.lastName,
-        },
+      // Navigate to Home
+      navigation.navigate("Home");
+    } catch (error) {
+      console.error("Signup error:", error);
+
+      let errorMessage = "Signup failed. Please try again.";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Toast.show({
+        type: "error",
+        text1: "Signup Failed",
+        text2: errorMessage,
       });
-    } catch (err) {
-      Alert.alert('Error', 'Signup failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.imagePlaceholder} />
       <Text style={styles.title}>Create Your Account</Text>
 
@@ -140,7 +174,7 @@ const SignupScreen = ({ navigation }) => {
           <FormInput
             label="First Name"
             value={form.firstName}
-            onChangeText={(text) => handleChange('firstName', text)}
+            onChangeText={(text) => handleChange("firstName", text)}
             placeholder="Enter first name"
             error={errors.firstName}
           />
@@ -149,7 +183,7 @@ const SignupScreen = ({ navigation }) => {
           <FormInput
             label="Last Name"
             value={form.lastName}
-            onChangeText={(text) => handleChange('lastName', text)}
+            onChangeText={(text) => handleChange("lastName", text)}
             placeholder="Enter last name"
             error={errors.lastName}
           />
@@ -159,7 +193,7 @@ const SignupScreen = ({ navigation }) => {
       <FormInput
         label="Email"
         value={form.email}
-        onChangeText={(text) => handleChange('email', text)}
+        onChangeText={(text) => handleChange("email", text)}
         placeholder="Enter email"
         error={errors.email}
         keyboardType="email-address"
@@ -173,24 +207,32 @@ const SignupScreen = ({ navigation }) => {
           defaultValue={form.phoneNumber}
           defaultCode="GH"
           layout="first"
-          onChangeFormattedText={(text) => handleChange('phoneNumber', text)}
+          onChangeFormattedText={(text) => handleChange("phoneNumber", text)}
           withShadow
           containerStyle={styles.phoneContainer}
           textContainerStyle={styles.phoneTextContainer}
           textInputStyle={styles.phoneTextInput}
           flagButtonStyle={styles.flagButton}
         />
-        {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
+        {errors.phoneNumber && (
+          <Text style={styles.errorText}>{errors.phoneNumber}</Text>
+        )}
       </View>
 
       <View style={styles.singleInputContainer}>
         <Text style={styles.label}>Password</Text>
-        <View style={[styles.input, styles.passwordInputWrapper, errors.password && styles.inputError]}>
+        <View
+          style={[
+            styles.input,
+            styles.passwordInputWrapper,
+            errors.password && styles.inputError,
+          ]}
+        >
           <TextInput
             style={{ flex: 1, paddingRight: 50 }}
             placeholder="Enter password"
             value={form.password}
-            onChangeText={(text) => handleChange('password', text)}
+            onChangeText={(text) => handleChange("password", text)}
             secureTextEntry={!passwordVisible}
             placeholderTextColor="#6a7581"
           />
@@ -198,29 +240,43 @@ const SignupScreen = ({ navigation }) => {
             style={styles.passwordToggleInside}
             onPress={() => setPasswordVisible(!passwordVisible)}
           >
-            <Text style={styles.passwordToggleText}>{passwordVisible ? 'Hide' : 'Show'}</Text>
+            <Text style={styles.passwordToggleText}>
+              {passwordVisible ? "Hide" : "Show"}
+            </Text>
           </TouchableOpacity>
         </View>
-        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+        {errors.password && (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        )}
       </View>
 
       <FormInput
         label="Location"
         value={form.location}
-        onChangeText={(text) => handleChange('location', text)}
+        onChangeText={(text) => handleChange("location", text)}
         placeholder="Enter location"
         error={errors.location}
       />
 
-      <TouchableOpacity style={styles.signUpButton} onPress={onSignUpPress} disabled={loading}>
-        <Text style={styles.signUpButtonText}>{loading ? 'Signing Up...' : 'Sign Up'}</Text>
+      <TouchableOpacity
+        style={styles.signUpButton}
+        onPress={onSignUpPress}
+        disabled={loading}
+      >
+        <Text style={styles.signUpButtonText}>
+          {loading ? "Signing Up..." : "Sign Up"}
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.googleButton} onPress={() => promptAsync()} disabled={!request}>
+      <TouchableOpacity
+        style={styles.googleButton}
+        onPress={() => promptAsync()}
+        disabled={!request}
+      >
         <Text style={styles.googleButtonText}>Sign up with Google</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
         <Text style={styles.loginText}>Already have an account? Log In</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -233,25 +289,25 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingBottom: 40,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     flexGrow: 1,
   },
   imagePlaceholder: {
     height: 120,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
     borderRadius: 12,
     marginBottom: 20,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    color: '#333',
-    textAlign: 'center',
+    color: "#333",
+    textAlign: "center",
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   inputContainer: {
     flex: 1,
@@ -263,88 +319,88 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 6,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    backgroundColor: '#fafafa',
-    color: '#000',
+    backgroundColor: "#fafafa",
+    color: "#000",
   },
   inputError: {
-    borderColor: 'red',
+    borderColor: "red",
   },
   errorText: {
-    color: 'red',
+    color: "red",
     fontSize: 12,
     marginTop: 4,
   },
   phoneContainer: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#fafafa',
+    overflow: "hidden",
+    backgroundColor: "#fafafa",
   },
   phoneTextContainer: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     paddingVertical: 0,
   },
   phoneTextInput: {
-    color: '#000',
+    color: "#000",
     height: 45,
     fontSize: 14,
   },
   flagButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
   },
   passwordInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   passwordToggleInside: {
-    position: 'absolute',
+    position: "absolute",
     right: 10,
     padding: 4,
   },
   passwordToggleText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 14,
   },
   signUpButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   signUpButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   googleButton: {
-    backgroundColor: '#DB4437',
+    backgroundColor: "#DB4437",
     borderRadius: 8,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   googleButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginText: {
     marginTop: 20,
-    color: '#007AFF',
-    textAlign: 'center',
+    color: "#007AFF",
+    textAlign: "center",
     fontSize: 14,
   },
 });
