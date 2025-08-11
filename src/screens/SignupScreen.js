@@ -94,30 +94,7 @@ const SignupScreen = ({ navigation }) => {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const validate = () => {
-    const newErrors = {};
-    if (!form.firstName.trim()) newErrors.firstName = "First name is required";
-    if (!form.lastName.trim()) newErrors.lastName = "Last name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      newErrors.email = "Invalid email address";
-    if (!form.password) newErrors.password = "Password is required";
-    else if (form.password.length < 8)
-      newErrors.password = "Minimum 8 characters";
-
-    const isPhoneValid = phoneInput.current?.isValidNumber(
-      phoneInput.current?.getNumberAfterPossiblyEliminatingZero()
-        ?.formattedNumber
-    );
-    if (!isPhoneValid) newErrors.phoneNumber = "Invalid phone number";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const onSignUpPress = async () => {
-    if (!validate()) return;
-
     setLoading(true);
     try {
       // Call the register API through context

@@ -23,13 +23,13 @@ const LoginScreen = () => {
   const navigation = useNavigation();
   const { login } = useAuth();
 
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // New state for validation errors
-  const [emailOrUsernameError, setEmailOrUsernameError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
   // Email validation function
@@ -54,38 +54,25 @@ const LoginScreen = () => {
 
   // Event Handlers
   const onLoginPress = useCallback(async () => {
-    let valid = true;
-
     // Reset errors
-    setEmailOrUsernameError("");
+    setEmailError("");
     setPasswordError("");
 
-    if (!emailOrUsername.trim()) {
-      setEmailOrUsernameError("Email or username is required");
-      valid = false;
-    } else if (
-      emailOrUsername.includes("@") &&
-      !isValidEmail(emailOrUsername)
-    ) {
-      setEmailOrUsernameError("Please enter a valid email address");
-      valid = false;
+    if (!email.trim()) {
+      setEmailError("Email or username is required");
+    } else if (!isValidEmail(email)) {
+      setEmailError("Please enter a valid email address");
     }
 
     if (!password) {
       setPasswordError("Password is required");
-      valid = false;
-    }
-
-    if (!valid) {
-      return;
     }
 
     try {
       // Call the login API through context
       const response = await login({
-        emailOrUsername,
+        email,
         password,
-        rememberMe,
       });
 
       console.log("Login response", response);
@@ -115,7 +102,7 @@ const LoginScreen = () => {
         text2: errorMessage,
       });
     }
-  }, [emailOrUsername, password, rememberMe, navigation]);
+  }, [email, password, rememberMe, navigation]);
 
   const onGoogleSignInPress = () => {
     console.log("Google Sign-In pressed");
@@ -150,22 +137,19 @@ const LoginScreen = () => {
           <View style={styles.formContainer}>
             {/* Email/Username */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email or Username</Text>
+              <Text style={styles.inputLabel}>Email</Text>
               <TextInput
-                style={[
-                  styles.input,
-                  emailOrUsernameError ? styles.inputError : null,
-                ]}
-                placeholder="Enter your email or username"
+                style={[styles.input, emailError ? styles.inputError : null]}
+                placeholder="Enter your email"
                 placeholderTextColor="#677583"
-                value={emailOrUsername}
-                onChangeText={setEmailOrUsername}
+                value={email}
+                onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 textContentType="username"
               />
-              {emailOrUsernameError ? (
-                <Text style={styles.errorText}>{emailOrUsernameError}</Text>
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
               ) : null}
             </View>
 
