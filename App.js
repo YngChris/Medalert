@@ -19,7 +19,7 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
 import ReplyScreen from "./src/screens/ReplyScreen";
 import DiscussionScreen from "./src/screens/DiscussionsScreen";
-import { ContentDetailScreen } from "./src/screens/ContentScreem";
+import { ContentDetailScreen } from "./src/screens/ContentScreen";
 import BarcodeScannerScreen from "./src/screens/BarcodeScannerScreen";
 const Stack = createNativeStackNavigator();
 
@@ -71,7 +71,7 @@ export default function App() {
           <Stack.Screen
             name="Alerts"
             component={AlertsScreen}
-            options={{ headershown: false }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Education"

@@ -1,9 +1,3 @@
-<<<<<<<< HEAD:screens/ReplyScreen.js
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert,} from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
-import { useNavigation, useRoute } from '@react-navigation/native';
-========
 import React, { useState } from "react";
 import {
   View,
@@ -15,7 +9,6 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/Feather";
 import { useNavigation, useRoute } from "@react-navigation/native";
->>>>>>>> 907b8b32424538cf3783879dfe3835e04dc19984:src/screens/ReplyScreen.js
 
 const ReplyScreen = () => {
   const [reply, setReply] = useState("");

@@ -1,10 +1,3 @@
-<<<<<<<< HEAD:screens/LocationsScreen.js
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity,} from 'react-native';
-import Icon from 'react-native-vector-icons/Feather';
-import { useNavigation } from '@react-navigation/native';
-import MapView, { Marker } from 'react-native-maps';
-========
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -18,7 +11,6 @@ import {
 import Icon from "react-native-vector-icons/Feather";
 import { useNavigation } from "@react-navigation/native";
 import MapView, { Marker } from "react-native-maps";
->>>>>>>> 907b8b32424538cf3783879dfe3835e04dc19984:src/screens/LocationsScreen.js
 
 const locationsData = [
   { id: "1", name: "Pharmacy A", status: "Flagged", lat: 5.6037, lng: -0.187 },
@@ -180,34 +172,50 @@ const LocationsScreen = () => {
           </View>
         ))}
       </ScrollView>
-<<<<<<<< HEAD:screens/LocationsScreen.js
-        {/* Footer Navigation */}
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Report')}>
-                  <Icon name="file-plus" size={24} color="#677583" />
-                  <Text style={styles.footerButtonText}>Reports</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.footerButton, styles.footerButtonActive]} onPress={() => navigation.navigate('Locations')}>
-                  <Icon name="map-pin" size={24} color="#121417" />
-                  <Text style={[styles.footerButtonText, styles.footerButtonTextActive]}>Locations</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Alerts')}>
-                  <Icon name="bell" size={24} color="#677583" /> 
-                  <Text style={styles.footerButtonText}>Alerts</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Education')}>
-                  <Icon name="book-open" size={24} color="#677583" />
-                  <Text style={styles.footerButtonText}>Education</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.footerButton} onPress={() => navigation.navigate('Forum')}>
-                  <Icon name="users" size={24} color="#677583" />
-                  <Text style={styles.footerButtonText}>Forum</Text>
-                </TouchableOpacity>
-              </View>
-    </View> 
-========
+
+      {/* Footer Navigation */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate("Report")}
+        >
+          <Icon name="file-plus" size={24} color="#677583" />
+          <Text style={styles.footerButtonText}>Reports</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.footerButton, styles.footerButtonActive]}
+          onPress={() => navigation.navigate("Locations")}
+        >
+          <Icon name="map-pin" size={24} color="#121417" />
+          <Text
+            style={[styles.footerButtonText, styles.footerButtonTextActive]}
+          >
+            Locations
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate("Alerts")}
+        >
+          <Icon name="bell" size={24} color="#677583" />
+          <Text style={styles.footerButtonText}>Alerts</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate("Education")}
+        >
+          <Icon name="book-open" size={24} color="#677583" />
+          <Text style={styles.footerButtonText}>Education</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.navigate("Forum")}
+        >
+          <Icon name="users" size={24} color="#677583" />
+          <Text style={styles.footerButtonText}>Forum</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
->>>>>>>> 907b8b32424538cf3783879dfe3835e04dc19984:src/screens/LocationsScreen.js
   );
 };
 
@@ -314,22 +322,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   footer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: '#f1f2f4',
-    backgroundColor: '#fff',
+    borderTopColor: "#f1f2f4",
+    backgroundColor: "#fff",
     paddingVertical: 8,
     paddingHorizontal: 4,
-    justifyContent: 'space-around',
+    justifyContent: "space-around",
   },
   footerButton: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerButtonText: {
-    color: '#121417',
+    color: "#121417",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 2,
   },
   footerButtonActive: {},
