@@ -10,13 +10,26 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import { useTheme } from '../context/ThemeContext';
 
 export const RecycleBinScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { theme } = useTheme();
   const { deletedReports: initialDeletedReports = [], restoreReport, setDeletedReports } = route.params || {};
 
   const [deletedReports, setLocalDeletedReports] = useState(initialDeletedReports);
+
+  // Theme-aware styles
+  const dynamicStyles = {
+    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+    textColor: theme === 'dark' ? '#ffffff' : '#121417',
+    mutedText: theme === 'dark' ? '#a0a0a0' : '#637587',
+    borderColor: theme === 'dark' ? '#404040' : '#e2e8f0',
+    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
+    inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
+    primaryColor: '#197ce5',
+  };
 
   useEffect(() => {
     // Sync local state with main state
@@ -60,12 +73,12 @@ export const RecycleBinScreen = () => {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="#121417" />
+            <Icon name="arrow-left" size={24} color={dynamicStyles.textColor} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Recycle Bin</Text>
+          <Text style={[styles.headerTitle, { color: dynamicStyles.textColor }]}>Recycle Bin</Text>
           <TouchableOpacity style={styles.iconButton} onPress={handleEmptyBin}>
             <Icon name="trash-2" size={22} color="#d32f2f" />
           </TouchableOpacity>
@@ -73,20 +86,35 @@ export const RecycleBinScreen = () => {
 
         {deletedReports.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Recycle Bin Empty</Text>
+            <Icon name="trash-2" size={64} color={dynamicStyles.mutedText} />
+            <Text style={[styles.emptyText, { color: dynamicStyles.textColor }]}>Recycle Bin Empty</Text>
+            <Text style={[styles.emptySubtext, { color: dynamicStyles.mutedText }]}>
+              Deleted reports will appear here
+            </Text>
           </View>
         ) : (
-          <ScrollView style={styles.list}>
+          <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {deletedReports.map((report, index) => (
-              <View key={index} style={styles.reportItem}>
+              <View key={index} style={[styles.reportItem, { 
+                backgroundColor: dynamicStyles.cardBackground,
+                borderColor: dynamicStyles.borderColor 
+              }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.titleText}>Medication: {report.medication}</Text>
-                  <Text style={styles.detailText}>Description: {report.description}</Text>
-                  <Text style={styles.detailText}>Location: {report.location}</Text>
-                  <Text style={styles.dateText}>Date: {report.date}</Text>
+                  <Text style={[styles.titleText, { color: dynamicStyles.textColor }]}>
+                    Medication: {report.medication}
+                  </Text>
+                  <Text style={[styles.detailText, { color: dynamicStyles.mutedText }]}>
+                    Description: {report.description}
+                  </Text>
+                  <Text style={[styles.detailText, { color: dynamicStyles.mutedText }]}>
+                    Location: {report.location}
+                  </Text>
+                  <Text style={[styles.dateText, { color: dynamicStyles.mutedText }]}>
+                    Date: {report.date}
+                  </Text>
                 </View>
                 <TouchableOpacity onPress={() => handleRestore(report)} style={styles.restoreBtn}>
-                  <Icon name="rotate-ccw" size={20} color="#1976d2" />
+                  <Icon name="rotate-ccw" size={20} color={dynamicStyles.primaryColor} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -98,31 +126,43 @@ export const RecycleBinScreen = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    paddingTop: 40,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingTop:40,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
   },
   iconButton: {
     width: 48,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 20,
   },
-  headerTitle: {
+  emptyContainer: {
     flex: 1,
-    textAlign: 'center',
-    fontWeight: '700',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyText: {
     fontSize: 20,
-    color: '#121417',
-    paddingTop: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   list: {
     flex: 1,
@@ -130,42 +170,33 @@ const styles = StyleSheet.create({
   },
   reportItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f2f4',
-    paddingVertical: 12,
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   titleText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#121417',
+    marginBottom: 8,
   },
   detailText: {
     fontSize: 14,
-    color: '#677583',
-    marginTop: 2,
+    marginBottom: 4,
   },
   dateText: {
-    fontSize: 13,
-    color: '#a1a6b0',
-    marginTop: 4,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   restoreBtn: {
-    marginLeft: 8,
-    marginTop: 4,
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: '#e8f0fe',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#677583',
-    fontStyle: 'italic',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(25, 124, 229, 0.1)',
   },
 });

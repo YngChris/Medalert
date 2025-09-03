@@ -4,6 +4,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Base URL for the API - you'll need to set this in your environment
 const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || "http://localhost:3000";
 
+// Log the base URL for debugging
+console.log("🌐 API Base URL:", BASE_URL);
+console.log("🔍 Environment variable:", process.env.EXPO_PUBLIC_BASE_URL);
+
 // Create axios instance
 const api = axios.create({
   baseURL: BASE_URL,
@@ -15,9 +19,16 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("authToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log("🔑 Token added to request:", config.url, token.substring(0, 10) + "...");
+      } else {
+        console.log("⚠️ No token available for request:", config.url);
+      }
+    } catch (error) {
+      console.error("❌ Error in request interceptor:", error);
     }
     return config;
   },

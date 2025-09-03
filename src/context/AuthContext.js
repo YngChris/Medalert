@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI, tokenManager, userManager } from "../services/api";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthContext = createContext();
 
@@ -29,6 +30,8 @@ export const AuthProvider = ({ children }) => {
         if (userData) {
           setUser(userData);
           setIsAuthenticated(true);
+          // Also update AsyncStorage for ProfileScreen compatibility
+          await AsyncStorage.setItem('userData', JSON.stringify(userData));
         } else {
           // Try to get user profile from API
           try {
@@ -36,6 +39,7 @@ export const AuthProvider = ({ children }) => {
             setUser(profile.user);
             setIsAuthenticated(true);
             await userManager.storeUser(profile.user);
+            await AsyncStorage.setItem('userData', JSON.stringify(profile.user));
           } catch (error) {
             // Profile fetch failed, clear auth
             await logout();
@@ -50,25 +54,244 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUserData = async () => {
+    try {
+      console.log("🔄 Refreshing user data from database...");
+      if (isAuthenticated) {
+        const profile = await authAPI.getProfile();
+        console.log("📊 Profile API response:", profile);
+        
+        if (profile.user) {
+          setUser(profile.user);
+          await userManager.storeUser(profile.user);
+          await AsyncStorage.setItem('userData', JSON.stringify(profile.user));
+          console.log("✅ User data refreshed from database:", profile.user);
+          return profile.user;
+        } else {
+          console.log("⚠️ Profile response doesn't contain user data:", profile);
+        }
+      } else {
+        console.log("⚠️ User not authenticated, cannot refresh profile");
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing user data:", error);
+    }
+    return null;
+  };
+
   const login = async (credentials) => {
     try {
+      console.log("🔐 Starting login process...");
+      console.log("📧 Login credentials:", { 
+        email: credentials.email, 
+        password: credentials.password ? "***" : "MISSING" 
+      });
+      console.log("🌐 Backend URL:", process.env.EXPO_PUBLIC_BASE_URL || "http://localhost:3000");
+      
       const response = await authAPI.login(credentials);
+      console.log("📡 Login API response:", response);
+      console.log("🔍 Response structure analysis:");
+      console.log("  - Has accessToken:", !!response.accessToken);
+      console.log("  - Has refreshToken:", !!response.refreshToken);
+      console.log("  - Has user object:", !!response.user);
+      console.log("  - Has success flag:", !!response.success);
+      console.log("  - Has userId:", !!response.userId);
+      console.log("  - Has id:", !!response.id);
+      console.log("  - Response keys:", Object.keys(response));
 
       if (response.accessToken && response.refreshToken) {
+        console.log("🔑 Storing tokens...");
         await tokenManager.storeTokens(
           response.accessToken,
           response.refreshToken
         );
+        console.log("🔑 Tokens stored successfully");
+        
+        // Verify tokens were actually stored
+        const storedToken = await tokenManager.getAccessToken();
+        console.log("🔍 Stored token verification:", storedToken ? "✅ Found" : "❌ Missing");
+        
+        if (!storedToken) {
+          console.log("⚠️ Token not found after storage, trying direct AsyncStorage...");
+          const directToken = await AsyncStorage.getItem("authToken");
+          console.log("🔍 Direct AsyncStorage token:", directToken ? "✅ Found" : "❌ Missing");
+          
+          if (directToken) {
+            console.log("✅ Token found in AsyncStorage, proceeding...");
+          } else {
+            // Try to manually set the token
+            console.log("🔄 Attempting manual token storage...");
+            await AsyncStorage.setItem("authToken", response.accessToken);
+            await AsyncStorage.setItem("refreshToken", response.refreshToken);
+            
+            // Verify manual storage
+            const manualToken = await AsyncStorage.getItem("authToken");
+            if (manualToken) {
+              console.log("✅ Manual token storage successful");
+            } else {
+              throw new Error("Failed to store access token even with manual storage");
+            }
+          }
+        }
+        
+        // Small delay to ensure tokens are properly stored and available
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
+      // Always fetch complete user profile from database after successful login
+      let userProfile = null;
+      
       if (response.user) {
-        setUser(response.user);
+        // If login response contains user data, use it as initial data
+        console.log("👤 User data received from login response:", response.user);
+        userProfile = response.user;
+      } else if (response.success) {
+        console.log("🔄 Login successful, fetching complete profile from database...");
+        // Try to extract user data from response if available
+        if (response.data && response.data.user) {
+          userProfile = response.data.user;
+          console.log("✅ Found user data in response.data.user:", userProfile);
+        } else if (response.data && typeof response.data === 'object') {
+          // Check if response.data itself contains user fields
+          const dataKeys = Object.keys(response.data);
+          if (dataKeys.includes('email') || dataKeys.includes('firstName') || dataKeys.includes('id')) {
+            userProfile = response.data;
+            console.log("✅ Found user data in response.data:", userProfile);
+          }
+        }
+      } else {
+        console.log("⚠️ Login response format unclear, attempting to fetch profile...");
+      }
+
+      // Fetch complete user profile from database
+      try {
+        console.log("🔄 Fetching complete user profile from database...");
+        
+        // Verify token is available before making profile request
+        let currentToken = await tokenManager.getAccessToken();
+        console.log("🔑 Current access token via tokenManager:", currentToken ? "Available" : "Missing");
+        
+        if (!currentToken) {
+          console.log("⚠️ Token not found via tokenManager, trying direct AsyncStorage...");
+          currentToken = await AsyncStorage.getItem("authToken");
+          console.log("🔑 Direct AsyncStorage token:", currentToken ? "Available" : "Missing");
+        }
+        
+        if (!currentToken) {
+          console.log("❌ No token found in any location");
+          throw new Error("Access token not available for profile request");
+        }
+        
+        console.log("✅ Token found and ready for profile request");
+        
+        // Test token validity with a simple request first
+        console.log("🧪 Testing token validity...");
+        try {
+          const profileResponse = await authAPI.getProfile();
+          console.log("📊 Profile API response:", profileResponse);
+          
+          if (profileResponse.user) {
+            // Use database profile data (most complete and up-to-date)
+            userProfile = profileResponse.user;
+            console.log("✅ Complete user profile fetched from database:", userProfile);
+          } else if (profileResponse.success && profileResponse.data) {
+            // Handle different response formats
+            userProfile = profileResponse.data;
+            console.log("✅ User profile data from database:", userProfile);
+          } else {
+            console.log("⚠️ Profile response format unexpected:", profileResponse);
+          }
+        } catch (tokenTestError) {
+          console.log("🔒 Token test failed:", tokenTestError.response?.status);
+          throw tokenTestError;
+        }
+      } catch (profileError) {
+        console.error("❌ Error fetching user profile from database:", profileError);
+        
+        if (profileError.response?.status === 401) {
+          console.log("🔒 401 Unauthorized - Token issue detected");
+          console.log("🔄 Attempting to use login response data as fallback");
+          
+          if (response.user) {
+            userProfile = response.user;
+            console.log("✅ Using login response user data as fallback");
+            console.log("⚠️ Profile data will be fetched when user navigates to Profile screen");
+          } else {
+            console.log("⚠️ No user data in login response, creating minimal user profile");
+            // Create a minimal user profile from available data
+            userProfile = {
+              email: credentials.email,
+              id: response.userId || response.id || Date.now().toString(),
+              firstName: response.firstName || "User",
+              lastName: response.lastName || "",
+              signupDate: new Date().toISOString().split("T")[0],
+            };
+            console.log("✅ Created minimal user profile as fallback:", userProfile);
+          }
+        } else if (profileError.message?.includes("Access token not available")) {
+          console.log("🔑 Access token issue detected");
+          console.log("🔄 Attempting to use login response data as fallback");
+          
+          if (response.user) {
+            userProfile = response.user;
+            console.log("✅ Using login response user data as fallback");
+            console.log("⚠️ Profile data will be fetched when user navigates to Profile screen");
+          } else {
+            console.log("⚠️ No user data in login response, creating minimal user profile");
+            // Create a minimal user profile from available data
+            userProfile = {
+              email: credentials.email,
+              id: response.userId || response.id || Date.now().toString(),
+              firstName: response.firstName || "User",
+              lastName: response.lastName || "",
+              signupDate: new Date().toISOString().split("T")[0],
+            };
+            console.log("✅ Created minimal user profile as fallback:", userProfile);
+          }
+        } else if (userProfile) {
+          console.log("⚠️ Using login response data as fallback");
+        } else {
+          console.log("⚠️ No fallback data available, creating minimal user profile");
+          // Create a minimal user profile from available data
+          userProfile = {
+            email: credentials.email,
+            id: response.userId || response.id || Date.now().toString(),
+            firstName: response.firstName || "User",
+            lastName: response.lastName || "",
+            signupDate: new Date().toISOString().split("T")[0],
+          };
+          console.log("✅ Created minimal user profile as final fallback:", userProfile);
+        }
+      }
+
+      // Store the complete user profile
+      if (userProfile) {
+        setUser(userProfile);
         setIsAuthenticated(true);
-        await userManager.storeUser(response.user);
+        await userManager.storeUser(userProfile);
+        await AsyncStorage.setItem('userData', JSON.stringify(userProfile));
+        
+        console.log("✅ Complete user profile stored after login:", userProfile);
+        console.log("📱 User can now enter app with full profile data");
+      } else {
+        throw new Error("No user profile data available after login");
       }
 
       return response;
     } catch (error) {
+      console.error("❌ Login error:", error);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error("📊 Error response status:", error.response.status);
+        console.error("📊 Error response data:", error.response.data);
+        console.error("📊 Error response headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("📡 No response received:", error.request);
+      } else {
+        console.error("❌ Error setting up request:", error.message);
+      }
+      
       throw error;
     }
   };
@@ -85,9 +308,33 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (response.user) {
+        // Store the user data from registration response
         setUser(response.user);
         setIsAuthenticated(true);
         await userManager.storeUser(response.user);
+        
+        // Store in userData for ProfileScreen compatibility
+        await AsyncStorage.setItem('userData', JSON.stringify(response.user));
+        
+        console.log("✅ User data stored after registration:", response.user);
+      } else if (response.success) {
+        // If backend returns success without user object, create user object from input
+        const createdUser = {
+          firstName: userData.firstName || userData.first_name,
+          lastName: userData.lastName || userData.last_name,
+          email: userData.email,
+          phoneNumber: userData.phoneNumber || userData.phone_number,
+          location: userData.location,
+          profileImage: userData.profileImage || userData.profile_image,
+          signupDate: new Date().toISOString().split("T")[0],
+        };
+        
+        setUser(createdUser);
+        setIsAuthenticated(true);
+        await userManager.storeUser(createdUser);
+        await AsyncStorage.setItem('userData', JSON.stringify(createdUser));
+        
+        console.log("✅ User data created and stored after registration:", createdUser);
       }
 
       return response;
@@ -155,6 +402,7 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     deleteAccount,
     checkAuthStatus,
+    refreshUserData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

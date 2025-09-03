@@ -1,273 +1,431 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Alert,
+  Image,
+  ActivityIndicator,
 } from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import PhoneInput from "react-native-phone-number-input";
-import Toast from "react-native-toast-message";
-import { useAuth } from "../context/AuthContext";
-
-WebBrowser.maybeCompleteAuthSession();
-
-const FormInput = ({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  error,
-  ...props
-}) => (
-  <View style={styles.singleInputContainer}>
-    <Text style={styles.label}>{label}</Text>
-    <TextInput
-      style={[styles.input, error && styles.inputError]}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor="#6a7581"
-      {...props}
-    />
-    {error && <Text style={styles.errorText}>{error}</Text>}
-  </View>
-);
+import * as ImagePicker from "expo-image-picker";
+import Icon from "react-native-vector-icons/Feather";
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import KeyboardAvoidingWrapper from '../components/KeyboardAvoidingWrapper';
 
 const SignupScreen = ({ navigation }) => {
-  const phoneInput = useRef(null);
+  const { getThemeColors } = useTheme();
   const { register } = useAuth();
-
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
-    phoneNumber: "",
     password: "",
+    phoneNumber: "",
     location: "",
+    signupDate: new Date().toISOString().split("T")[0],
   });
-
+  const [profileImage, setProfileImage] = useState(null);
   const [errors, setErrors] = useState({});
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: "<YOUR_EXPO_CLIENT_ID>",
-    iosClientId: "<YOUR_IOS_CLIENT_ID>",
-    androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
-    webClientId: "<YOUR_WEB_CLIENT_ID>",
-    scopes: ["profile", "email"],
-  });
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        fetchUserInfo(authentication.accessToken);
-      } else {
-        Alert.alert("Google Sign-In Error", "No access token received");
-      }
-    }
-  }, [response]);
-
-  const fetchUserInfo = async (token) => {
-    try {
-      const res = await fetch("https://www.googleapis.com/userinfo/v2/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      Toast.show({
-        type: "success",
-        text1: `Signed in as ${data.email}`,
-      });
-    } catch (err) {
-      Alert.alert("Error", "Failed to fetch user info");
+  const handleChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    // Clear error when user starts typing (only if they've attempted to submit)
+    if (hasAttemptedSubmit && errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
 
-  const handleChange = (name, value) => {
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!form.firstName.trim()) {
+      newErrors.firstName = "First name is required";
+    }
+
+    if (!form.lastName.trim()) {
+      newErrors.lastName = "Last name is required";
+    }
+
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!form.password.trim()) {
+      newErrors.password = "Password is required";
+    } else if (form.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+
+    // Only show errors if user has attempted to submit
+    if (hasAttemptedSubmit) {
+      setErrors(newErrors);
+    }
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const getInputBorderColor = (field) => {
+    if (errors[field]) return dynamicStyles.errorColor;
+    if (form[field].trim()) return dynamicStyles.successColor;
+    return dynamicStyles.borderColor;
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+    }
   };
 
   const onSignUpPress = async () => {
+    // Mark that user has attempted to submit
+    setHasAttemptedSubmit(true);
+    
+    // Enhanced validation
+    if (!validateForm()) {
+      Alert.alert("Validation Error", "Please fix the errors in the form before proceeding.");
+      return;
+    }
+
     setLoading(true);
+
     try {
-      // Call the register API through context
-      const response = await register({
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        phoneNumber: form.phoneNumber,
-        password: form.password,
-        location: form.location,
-      });
+             // Test different field name combinations to find what backend expects
+       const userData = {
+         // Test 1: camelCase (most common in Node.js)
+         firstName: form.firstName.trim(),
+         lastName: form.lastName.trim(),
+         email: form.email.trim().toLowerCase(),
+         password: form.password,
+         phoneNumber: form.phoneNumber.trim() || null,
+         location: form.location.trim() || null,
+         profileImage: profileImage,
+       };
 
-      console.log("Signup response", response);
+       // Test 2: snake_case (common in Python/PHP backends)
+       const userDataSnake = {
+         first_name: form.firstName.trim(),
+         last_name: form.lastName.trim(),
+         email: form.email.trim().toLowerCase(),
+         password: form.password,
+         phone_number: form.phoneNumber.trim() || null,
+         location: form.location.trim() || null,
+         profile_image: profileImage,
+       };
 
-      Toast.show({
-        type: "success",
-        text1: "Signup successful!",
-        text2: `Welcome, ${form.firstName}!`,
-      });
+               // Try camelCase first, if it fails, try snake_case
+        let response;
+        let lastError;
+        
+        try {
+          console.log("Trying camelCase fields:", JSON.stringify(userData, null, 2));
+          response = await register(userData);
+          console.log("✅ camelCase registration SUCCESS!");
+        } catch (error) {
+          console.log("❌ camelCase failed:", error.response?.data?.message || error.message);
+          lastError = error;
+          
+          // Only try snake_case if it's a 400 error (field validation issue)
+          if (error.response?.status === 400 && error.response?.data?.message !== "User with this email already exists") {
+            try {
+              console.log("🔄 Trying snake_case fields...");
+              console.log("Trying snake_case fields:", JSON.stringify(userDataSnake, null, 2));
+              response = await register(userDataSnake);
+              console.log("✅ snake_case registration SUCCESS!");
+            } catch (snakeError) {
+              console.log("❌ snake_case also failed:", snakeError.response?.data?.message || snakeError.message);
+              lastError = snakeError;
+            }
+          }
+        }
 
-      // Navigate to Home
-      navigation.navigate("Home");
-    } catch (error) {
-      console.error("Signup error:", error);
+        // Log final result and response structure
+        console.log("🔍 Response structure:", JSON.stringify(response, null, 2));
+        if (response && response.user) {
+          console.log("🎉 Registration successful with user:", response.user.email);
+        } else if (response && response.success) {
+          console.log("🎉 Registration successful with success flag");
+        } else {
+          console.log("💥 All registration attempts failed");
+          console.log("Response type:", typeof response);
+          console.log("Response keys:", response ? Object.keys(response) : "null");
+        }
 
-      let errorMessage = "Signup failed. Please try again.";
-
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Toast.show({
-        type: "error",
-        text1: "Signup Failed",
-        text2: errorMessage,
-      });
+                     if (response && (response.user || response.success)) {
+          // Registration successful
+          const userData = response.user || {
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
+            email: form.email.trim().toLowerCase(),
+            phoneNumber: form.phoneNumber.trim() || null,
+            location: form.location.trim() || null,
+            profileImage: profileImage,
+            signupDate: new Date().toISOString().split("T")[0],
+          };
+          
+          console.log("🎉 Registration successful! Navigating to Profile with user data:", userData);
+          console.log("📱 Navigation params will be:", {
+            user: userData,
+            updated: true,
+            fromSignup: true,
+          });
+          
+          Alert.alert(
+            "Success!",
+            "Account created successfully!",
+            [
+              {
+                text: "Continue",
+                onPress: () => {
+                  // Navigate to Home screen with the user data
+                  navigation.navigate("Home", {
+                    user: userData,
+                    updated: true,
+                    fromSignup: true,
+                  });
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert("Error", "Registration failed. Please try again.");
+        }
+         } catch (error) {
+       // Use the last error from our attempts, or the current error
+       const finalError = lastError || error;
+       
+       console.error("Error during signup:", finalError);
+       console.error("Error response:", finalError.response?.data);
+       console.error("Error status:", finalError.response?.status);
+       
+       let errorMessage = "Failed to create account. Please try again.";
+       
+       if (finalError.response?.data?.message) {
+         errorMessage = finalError.response.data.message;
+       } else if (finalError.response?.data?.error) {
+         errorMessage = finalError.response.data.error;
+       } else if (finalError.message) {
+         errorMessage = finalError.message;
+       }
+       
+       // Show more detailed error info
+       Alert.alert(
+         "Registration Error", 
+         `${errorMessage}\n\nStatus: ${finalError.response?.status || 'Unknown'}\n\nCheck console for details.`
+       );
     } finally {
       setLoading(false);
     }
   };
 
+  const dynamicStyles = getThemeColors();
+
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingWrapper
+      style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}
+      contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.imagePlaceholder} />
-      <Text style={styles.title}>Create Your Account</Text>
+      <Text style={[styles.title, { color: dynamicStyles.textColor }]}>Create Your Account</Text>
 
-      <View style={styles.row}>
-        <View style={styles.inputContainer}>
-          <FormInput
-            label="First Name"
-            value={form.firstName}
-            onChangeText={(text) => handleChange("firstName", text)}
-            placeholder="Enter first name"
-            error={errors.firstName}
-          />
-        </View>
-        <View style={styles.inputContainer}>
-          <FormInput
-            label="Last Name"
-            value={form.lastName}
-            onChangeText={(text) => handleChange("lastName", text)}
-            placeholder="Enter last name"
-            error={errors.lastName}
-          />
-        </View>
-      </View>
-
-      <FormInput
-        label="Email"
-        value={form.email}
-        onChangeText={(text) => handleChange("email", text)}
-        placeholder="Enter email"
-        error={errors.email}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <View style={styles.singleInputContainer}>
-        <Text style={styles.label}>Phone Number</Text>
-        <PhoneInput
-          ref={phoneInput}
-          defaultValue={form.phoneNumber}
-          defaultCode="GH"
-          layout="first"
-          onChangeFormattedText={(text) => handleChange("phoneNumber", text)}
-          withShadow
-          containerStyle={styles.phoneContainer}
-          textContainerStyle={styles.phoneTextContainer}
-          textInputStyle={styles.phoneTextInput}
-          flagButtonStyle={styles.flagButton}
-        />
-        {errors.phoneNumber && (
-          <Text style={styles.errorText}>{errors.phoneNumber}</Text>
-        )}
-      </View>
-
-      <View style={styles.singleInputContainer}>
-        <Text style={styles.label}>Password</Text>
-        <View
-          style={[
-            styles.input,
-            styles.passwordInputWrapper,
-            errors.password && styles.inputError,
-          ]}
-        >
-          <TextInput
-            style={{ flex: 1, paddingRight: 50 }}
-            placeholder="Enter password"
-            value={form.password}
-            onChangeText={(text) => handleChange("password", text)}
-            secureTextEntry={!passwordVisible}
-            placeholderTextColor="#6a7581"
-          />
-          <TouchableOpacity
-            style={styles.passwordToggleInside}
-            onPress={() => setPasswordVisible(!passwordVisible)}
-          >
-            <Text style={styles.passwordToggleText}>
-              {passwordVisible ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {errors.password && (
-          <Text style={styles.errorText}>{errors.password}</Text>
-        )}
-      </View>
-
-      <FormInput
-        label="Location"
-        value={form.location}
-        onChangeText={(text) => handleChange("location", text)}
-        placeholder="Enter location"
-        error={errors.location}
-      />
-
-      <TouchableOpacity
-        style={styles.signUpButton}
-        onPress={onSignUpPress}
-        disabled={loading}
-      >
-        <Text style={styles.signUpButtonText}>
-          {loading ? "Signing Up..." : "Sign Up"}
+      {/* Profile Picture Upload Section */}
+      <View style={styles.profileImageContainer}>
+        <TouchableOpacity onPress={pickImage}>
+          {profileImage ? (
+            <View style={styles.profileImageWrapper}>
+              <Image source={{ uri: profileImage }} style={styles.profileImage} />
+              <View style={styles.checkmarkOverlay}>
+                <Icon name="check-circle" size={20} color="#28a745" />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.placeholderImage}>
+              <Icon name="camera" size={30} color={dynamicStyles.mutedText} />
+            </View>
+          )}
+          <Text style={styles.changeText}>
+            {profileImage ? 'Change Profile Photo' : 'Upload Profile Photo'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={[styles.optionalText, { color: dynamicStyles.mutedText }]}>
+          {profileImage ? 'Profile photo selected ✓' : 'Profile photo is optional'}
         </Text>
-      </TouchableOpacity>
+      </View>
 
-      <TouchableOpacity
-        style={styles.googleButton}
-        onPress={() => promptAsync()}
-        disabled={!request}
-      >
-        <Text style={styles.googleButtonText}>Sign up with Google</Text>
-      </TouchableOpacity>
+      <View style={styles.formContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>First Name *</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: getInputBorderColor('firstName'),
+              borderWidth: 2
+            }]}
+            value={form.firstName}
+            onChangeText={(value) => handleChange("firstName", value)}
+            placeholder="Enter your first name"
+            placeholderTextColor={dynamicStyles.mutedText}
+          />
+          {errors.firstName && (
+            <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
+              {errors.firstName}
+            </Text>
+          )}
+        </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-        <Text style={styles.loginText}>Already have an account? Log In</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Last Name *</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: getInputBorderColor('lastName'),
+              borderWidth: 2
+            }]}
+            value={form.lastName}
+            onChangeText={(value) => handleChange("lastName", value)}
+            placeholder="Enter your last name"
+            placeholderTextColor={dynamicStyles.mutedText}
+          />
+          {errors.lastName && (
+            <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
+              {errors.lastName}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Email *</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: getInputBorderColor('email'),
+              borderWidth: 2
+            }]}
+            value={form.email}
+            onChangeText={(value) => handleChange("email", value)}
+            placeholder="Enter your email"
+            placeholderTextColor={dynamicStyles.mutedText}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          {errors.email && (
+            <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
+              {errors.email}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Password *</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: getInputBorderColor('password'),
+              borderWidth: 2
+            }]}
+            value={form.password}
+            onChangeText={(value) => handleChange("password", value)}
+            placeholder="Enter your password"
+            placeholderTextColor={dynamicStyles.mutedText}
+            secureTextEntry
+          />
+          {errors.password && (
+            <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
+              {errors.password}
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Phone Number</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: dynamicStyles.borderColor 
+            }]}
+            value={form.phoneNumber}
+            onChangeText={(value) => handleChange("phoneNumber", value)}
+            placeholder="Enter your phone number"
+            placeholderTextColor={dynamicStyles.mutedText}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Location</Text>
+          <TextInput
+            style={[styles.input, { 
+              backgroundColor: dynamicStyles.inputBackground, 
+              color: dynamicStyles.textColor,
+              borderColor: dynamicStyles.borderColor 
+            }]}
+            value={form.location}
+            onChangeText={(value) => handleChange("location", value)}
+            placeholder="Enter your location"
+            placeholderTextColor={dynamicStyles.mutedText}
+          />
+        </View>
+
+        <TouchableOpacity style={styles.signupButton} onPress={onSignUpPress} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.signupButtonText}>Create Account</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => navigation.navigate("Login")}
+        >
+          <Text style={[styles.loginLinkText, { color: dynamicStyles.primaryColor }]}>
+            Already have an account? Login
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.backToIntroButton}
+          onPress={() => navigation.navigate("GetStarted")}
+        >
+          <Text style={[styles.backToIntroText, { color: dynamicStyles.mutedText }]}>
+            Back to Introduction
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingWrapper>
   );
 };
 
-export default SignupScreen;
-
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  contentContainer: {
     padding: 20,
     paddingBottom: 40,
-    backgroundColor: "#fff",
-    flexGrow: 1,
   },
   imagePlaceholder: {
     height: 120,
@@ -380,4 +538,85 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
   },
+  profileImageContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  profileImageWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
+  },
+  checkmarkOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
+  placeholderImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  changeText: {
+    color: "#007AFF",
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
+  optionalText: {
+    marginTop: 5,
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+  },
+  formContainer: {
+    marginTop: 20,
+  },
+  inputGroup: {
+    marginBottom: 15,
+  },
+  signupButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  signupButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loginLink: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  loginLinkText: {
+    fontSize: 14,
+  },
+  backToIntroButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  backToIntroText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
 });
+
+export default SignupScreen;

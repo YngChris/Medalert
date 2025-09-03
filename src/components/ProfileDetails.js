@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
-import PhoneInput from 'react-native-phone-number-input';
 import Icon from 'react-native-vector-icons/Feather';
+import { useTheme } from '../context/ThemeContext';
 
 const ProfileDetails = ({
   form,
@@ -12,26 +12,11 @@ const ProfileDetails = ({
   onPickImage,
   profileImage,
 }) => {
-  const renderInput = (label, value, key, placeholder, keyboardType = 'default') => (
-    <View style={styles.inputGroup} key={key}>
-      <Text style={styles.label}>{label}</Text>
-      {editable ? (
-        <TextInput
-          style={[styles.input, errors[key] && styles.inputError]}
-          value={value}
-          onChangeText={(text) => onChange(key, text)}
-          placeholder={placeholder}
-          keyboardType={keyboardType}
-        />
-      ) : (
-        <Text style={styles.readOnlyText}>{value}</Text>
-      )}
-      {editable && errors[key] && <Text style={styles.errorText}>{errors[key]}</Text>}
-    </View>
-  );
+  const { getThemeColors } = useTheme();
+  const dynamicStyles = getThemeColors();
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.imageContainer}>
         {editable ? (
           <TouchableOpacity onPress={onPickImage}>
@@ -39,48 +24,147 @@ const ProfileDetails = ({
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
               <View style={styles.placeholderImage}>
-                <Icon name="camera" size={30} color="#666" />
+                <Icon name="camera" size={30} color={dynamicStyles.mutedText} />
               </View>
             )}
-            <Text style={styles.changeText}>Change Photo</Text>
+            <Text style={[styles.changeText, { color: dynamicStyles.primaryColor }]}>Change Photo</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.profileImage}>
-            <Icon name="user" size={48} color="#555" />
-          </View>
+          profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.profileImage}>
+              <Icon name="user" size={48} color={dynamicStyles.mutedText} />
+            </View>
+          )
         )}
       </View>
 
-      <View style={styles.row}>
-        {renderInput('First Name', form.firstName, 'firstName', 'Enter first name')}
-        {renderInput('Last Name', form.lastName, 'lastName', 'Enter last name')}
+      <View style={styles.formContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>First Name *</Text>
+          {editable ? (
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  backgroundColor: dynamicStyles.inputBackground, 
+                  color: dynamicStyles.textColor,
+                  borderColor: errors.firstName ? dynamicStyles.errorColor : dynamicStyles.borderColor 
+                }
+              ]}
+              value={form.firstName}
+              onChangeText={(value) => onChange('firstName', value)}
+              placeholder="Enter your first name"
+              placeholderTextColor={dynamicStyles.mutedText}
+            />
+          ) : (
+            <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.firstName || 'Not provided'}</Text>
+          )}
+          {errors.firstName && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.firstName}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Last Name *</Text>
+          {editable ? (
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  backgroundColor: dynamicStyles.inputBackground, 
+                  color: dynamicStyles.textColor,
+                  borderColor: errors.lastName ? dynamicStyles.errorColor : dynamicStyles.borderColor 
+                }
+              ]}
+              value={form.lastName}
+              onChangeText={(value) => onChange('lastName', value)}
+              placeholder="Enter your last name"
+              placeholderTextColor={dynamicStyles.mutedText}
+            />
+          ) : (
+            <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.lastName || 'Not provided'}</Text>
+          )}
+          {errors.lastName && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.lastName}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Email *</Text>
+          {editable ? (
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  backgroundColor: dynamicStyles.inputBackground, 
+                  color: dynamicStyles.textColor,
+                  borderColor: errors.email ? dynamicStyles.errorColor : dynamicStyles.borderColor 
+                }
+              ]}
+              value={form.email}
+              onChangeText={(value) => onChange('email', value)}
+              placeholder="Enter your email"
+              placeholderTextColor={dynamicStyles.mutedText}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          ) : (
+            <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.email || 'Not provided'}</Text>
+          )}
+          {errors.email && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.email}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Phone Number</Text>
+          {editable ? (
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  backgroundColor: dynamicStyles.inputBackground, 
+                  color: dynamicStyles.textColor,
+                  borderColor: errors.phoneNumber ? dynamicStyles.errorColor : dynamicStyles.borderColor 
+                }
+              ]}
+              value={form.phoneNumber}
+              onChangeText={(value) => onChange('phoneNumber', value)}
+              placeholder="Enter your phone number"
+              placeholderTextColor={dynamicStyles.mutedText}
+              keyboardType="phone-pad"
+              ref={phoneInputRef}
+            />
+          ) : (
+            <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.phoneNumber || 'Not provided'}</Text>
+          )}
+          {errors.phoneNumber && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.phoneNumber}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Location</Text>
+          {editable ? (
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  backgroundColor: dynamicStyles.inputBackground, 
+                  color: dynamicStyles.textColor,
+                  borderColor: errors.location ? dynamicStyles.errorColor : dynamicStyles.borderColor 
+                }
+              ]}
+              value={form.location}
+              onChangeText={(value) => onChange('location', value)}
+              placeholder="Enter your location"
+              placeholderTextColor={dynamicStyles.mutedText}
+            />
+          ) : (
+            <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.location || 'Not provided'}</Text>
+          )}
+          {errors.location && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.location}</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Signup Date</Text>
+          <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.signupDate || 'Not provided'}</Text>
+        </View>
       </View>
-
-      {renderInput('Email', form.email, 'email', 'Enter email', 'email-address')}
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Phone Number</Text>
-        {editable ? (
-          <PhoneInput
-            ref={phoneInputRef}
-            defaultValue={form.phoneNumber}
-            defaultCode="GH"
-            layout="first"
-            onChangeFormattedText={(text) => onChange('phoneNumber', text)}
-            containerStyle={styles.phoneContainer}
-            textContainerStyle={styles.phoneTextContainer}
-            textInputStyle={styles.phoneTextInput}
-            flagButtonStyle={styles.flagButton}
-          />
-        ) : (
-          <Text style={styles.readOnlyText}>{form.phoneNumber}</Text>
-        )}
-        {editable && errors.phoneNumber && (
-          <Text style={styles.errorText}>{errors.phoneNumber}</Text>
-        )}
-      </View>
-
-      {renderInput('Location', form.location, 'location', 'Enter location')}
     </ScrollView>
   );
 };
@@ -177,6 +261,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
+  },
+  formContainer: {
+    // This style is no longer needed as the form is now in ScrollView
+  },
+  displayText: {
+    fontSize: 16,
+    backgroundColor: '#f7f7f7',
+    padding: 10,
+    borderRadius: 8,
   },
 });
 
