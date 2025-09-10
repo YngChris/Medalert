@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { authAPI, tokenManager, userManager } from "../services/api";
+import { authAPI, tokenManager, userManager, setAccessToken } from "../services/api";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { flushQueue } from '../services/persistence';
 
 const AuthContext = createContext();
 
@@ -36,10 +37,36 @@ export const AuthProvider = ({ children }) => {
           // Try to get user profile from API
           try {
             const profile = await authAPI.getProfile();
-            setUser(profile.user);
-            setIsAuthenticated(true);
-            await userManager.storeUser(profile.user);
-            await AsyncStorage.setItem('userData', JSON.stringify(profile.user));
+            
+            // Handle different response formats
+            let userData = null;
+            if (profile.user) {
+              userData = profile.user;
+            } else if (profile.data && profile.data.user) {
+              userData = profile.data.user;
+            } else if (profile.data) {
+              userData = profile.data;
+            }
+            
+            if (userData) {
+              // Ensure all required fields are present with fallbacks
+              userData = {
+                ...userData,
+                phoneNumber: userData.phoneNumber || userData.phone_number || '',
+                profileImage: userData.profileImage || userData.profile_image || userData.avatar || null,
+                firstName: userData.firstName || userData.first_name || '',
+                lastName: userData.lastName || userData.last_name || '',
+                email: userData.email || '',
+                location: userData.location || '',
+              };
+              
+              setUser(userData);
+              setIsAuthenticated(true);
+              await userManager.storeUser(userData);
+              await AsyncStorage.setItem('userData', JSON.stringify(userData));
+            } else {
+              throw new Error("No user data in profile response");
+            }
           } catch (error) {
             // Profile fetch failed, clear auth
             await logout();
@@ -61,12 +88,36 @@ export const AuthProvider = ({ children }) => {
         const profile = await authAPI.getProfile();
         console.log("📊 Profile API response:", profile);
         
+        // Handle different response formats
+        let userData = null;
         if (profile.user) {
-          setUser(profile.user);
-          await userManager.storeUser(profile.user);
-          await AsyncStorage.setItem('userData', JSON.stringify(profile.user));
-          console.log("✅ User data refreshed from database:", profile.user);
-          return profile.user;
+          userData = profile.user;
+        } else if (profile.data && profile.data.user) {
+          userData = profile.data.user;
+        } else if (profile.data) {
+          userData = profile.data;
+        }
+        
+        // Ensure all required fields are present with fallbacks
+        if (userData) {
+          userData = {
+            ...userData,
+            phoneNumber: userData.phoneNumber || userData.phone_number || '',
+            profileImage: userData.profileImage || userData.profile_image || userData.avatar || null,
+            firstName: userData.firstName || userData.first_name || '',
+            lastName: userData.lastName || userData.last_name || '',
+            email: userData.email || '',
+            location: userData.location || '',
+          };
+          console.log("✅ Normalized user data with all fields:", userData);
+        }
+        
+        if (userData) {
+          setUser(userData);
+          await userManager.storeUser(userData);
+          await AsyncStorage.setItem('userData', JSON.stringify(userData));
+          console.log("✅ User data refreshed from database:", userData);
+          return userData;
         } else {
           console.log("⚠️ Profile response doesn't contain user data:", profile);
         }
@@ -99,12 +150,14 @@ export const AuthProvider = ({ children }) => {
       console.log("  - Has id:", !!response.id);
       console.log("  - Response keys:", Object.keys(response));
 
-      if (response.accessToken && response.refreshToken) {
+      if (response.accessToken) {
         console.log("🔑 Storing tokens...");
-        await tokenManager.storeTokens(
-          response.accessToken,
-          response.refreshToken
-        );
+        // Store access token; refresh token if present
+        await AsyncStorage.setItem("authToken", response.accessToken);
+        setAccessToken(response.accessToken);
+        if (response.refreshToken) {
+          await AsyncStorage.setItem("refreshToken", response.refreshToken);
+        }
         console.log("🔑 Tokens stored successfully");
         
         // Verify tokens were actually stored
@@ -145,19 +198,13 @@ export const AuthProvider = ({ children }) => {
         // If login response contains user data, use it as initial data
         console.log("👤 User data received from login response:", response.user);
         userProfile = response.user;
-      } else if (response.success) {
+      } else if (response.success && response.raw) {
         console.log("🔄 Login successful, fetching complete profile from database...");
-        // Try to extract user data from response if available
-        if (response.data && response.data.user) {
-          userProfile = response.data.user;
-          console.log("✅ Found user data in response.data.user:", userProfile);
-        } else if (response.data && typeof response.data === 'object') {
-          // Check if response.data itself contains user fields
-          const dataKeys = Object.keys(response.data);
-          if (dataKeys.includes('email') || dataKeys.includes('firstName') || dataKeys.includes('id')) {
-            userProfile = response.data;
-            console.log("✅ Found user data in response.data:", userProfile);
-          }
+        // Try to extract user data from normalized raw payload
+        const payload = response.raw.data || response.raw;
+        if (payload && payload.user) {
+          userProfile = payload.user;
+          console.log("✅ Found user data in normalized payload:", userProfile);
         }
       } else {
         console.log("⚠️ Login response format unclear, attempting to fetch profile...");
@@ -190,23 +237,39 @@ export const AuthProvider = ({ children }) => {
           const profileResponse = await authAPI.getProfile();
           console.log("📊 Profile API response:", profileResponse);
           
+          // Handle different response formats
           if (profileResponse.user) {
-            // Use database profile data (most complete and up-to-date)
             userProfile = profileResponse.user;
             console.log("✅ Complete user profile fetched from database:", userProfile);
-          } else if (profileResponse.success && profileResponse.data) {
-            // Handle different response formats
+          } else if (profileResponse.data && profileResponse.data.user) {
+            userProfile = profileResponse.data.user;
+            console.log("✅ User profile data from database (nested):", userProfile);
+          } else if (profileResponse.data) {
             userProfile = profileResponse.data;
-            console.log("✅ User profile data from database:", userProfile);
+            console.log("✅ User profile data from database (direct):", userProfile);
           } else {
             console.log("⚠️ Profile response format unexpected:", profileResponse);
+          }
+          
+          // Ensure all required fields are present with fallbacks
+          if (userProfile) {
+            userProfile = {
+              ...userProfile,
+              phoneNumber: userProfile.phoneNumber || userProfile.phone_number || '',
+              profileImage: userProfile.profileImage || userProfile.profile_image || userProfile.avatar || null,
+              firstName: userProfile.firstName || userProfile.first_name || '',
+              lastName: userProfile.lastName || userProfile.last_name || '',
+              email: userProfile.email || '',
+              location: userProfile.location || '',
+            };
+            console.log("✅ Normalized user profile with all fields:", userProfile);
           }
         } catch (tokenTestError) {
           console.log("🔒 Token test failed:", tokenTestError.response?.status);
           throw tokenTestError;
         }
       } catch (profileError) {
-        console.error("❌ Error fetching user profile from database:", profileError);
+        // console.error("❌ Error fetching user profile from database:", profileError);
         
         if (profileError.response?.status === 401) {
           console.log("🔒 401 Unauthorized - Token issue detected");
@@ -273,6 +336,20 @@ export const AuthProvider = ({ children }) => {
         
         console.log("✅ Complete user profile stored after login:", userProfile);
         console.log("📱 User can now enter app with full profile data");
+
+        // Flush any offline actions queued while logged out
+        try {
+          await flushQueue(async (item) => {
+            // Example dispatch placeholder; expand per item.type
+            // if (item.type === 'UPDATE_PROFILE') await authAPI.updateProfile(item.payload);
+            // else if (item.type === 'CREATE_REPORT') await reportsAPI.create(item.payload);
+            // For now, no-op to illustrate hook-up point
+            return Promise.resolve();
+          });
+          console.log('✅ Offline queue flushed after login');
+        } catch (e) {
+          console.log('⚠️ Failed flushing offline queue, will retry later');
+        }
       } else {
         throw new Error("No user profile data available after login");
       }
@@ -355,6 +432,8 @@ export const AuthProvider = ({ children }) => {
       // Clear local data regardless of API call success
       await tokenManager.clearTokens();
       await userManager.clearUser();
+      // Clear persisted navigation state so we don't restore protected routes
+      try { await AsyncStorage.removeItem('navState_v1'); } catch (_) {}
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -362,13 +441,21 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
+      console.log("🔄 AuthContext - Updating profile with data:", profileData);
       const response = await authAPI.updateProfile(profileData);
+      console.log("📡 AuthContext - Update profile response:", response);
+      
       if (response.user) {
+        console.log("✅ AuthContext - Setting updated user:", response.user);
+        console.log("📞 AuthContext - Updated user phoneNumber:", response.user.phoneNumber);
         setUser(response.user);
         await userManager.updateUser(response.user);
+        // Also update AsyncStorage for ProfileScreen compatibility
+        await AsyncStorage.setItem('userData', JSON.stringify(response.user));
       }
       return response;
     } catch (error) {
+      console.error("❌ AuthContext - Update profile error:", error);
       throw error;
     }
   };

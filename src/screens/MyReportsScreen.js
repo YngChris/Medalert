@@ -18,101 +18,45 @@ import Toast from 'react-native-toast-message';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { reportsStorage } from '../utils/reportsStorage';
 
 const { width } = Dimensions.get('window');
 
-// Enhanced report data structure to match ReportFormScreen
-const initialReports = [
-  {
-    id: '1',
-    medicationName: 'Aspirin 500mg',
-    description: 'Found expired pills in the cabinet. The medication was stored beyond its expiration date and shows signs of discoloration.',
-    location: '123 Main St, Anytown, NY',
-    storeName: 'CVS Pharmacy',
-    category: 'Over-the-Counter',
-    severity: 'medium',
-    expirationDate: '2023-11-15',
-    batchNumber: 'BATCH-001',
-    manufacturer: 'Bayer',
-    reportAnonymously: false,
-    status: 'pending',
-    timestamp: '2023-11-15T10:30:00Z',
-    attachedImages: [
-      { uri: 'https://via.placeholder.com/150x150/FF6B6B/FFFFFF?text=IMG1', id: 'img1' },
-      { uri: 'https://via.placeholder.com/150x150/4ECDC4/FFFFFF?text=IMG2', id: 'img2' }
-    ],
-    userId: 'user123'
+// No hardcoded data - reports will be loaded from storage
+
+const getStatusConfig = (theme) => ({
+  pending: { 
+    label: 'Pending', 
+    color: '#ffc107', 
+    icon: 'clock', 
+    bgColor: theme === 'dark' ? 'rgba(255, 193, 7, 0.2)' : '#fff3cd' 
   },
-  {
-    id: '2',
-    medicationName: 'Ibuprofen 200mg',
-    description: 'Suspicious packaging, seal broken. The medication container appears to have been tampered with.',
-    location: '456 Oak Ave, Anytown, NY',
-    storeName: 'Walgreens',
-    category: 'Over-the-Counter',
-    severity: 'high',
-    expirationDate: '2024-06-20',
-    batchNumber: 'BATCH-002',
-    manufacturer: 'Advil',
-    reportAnonymously: true,
-    status: 'under_review',
-    timestamp: '2023-11-10T14:15:00Z',
-    attachedImages: [
-      { uri: 'https://via.placeholder.com/150x150/45B7D1/FFFFFF?text=IMG3', id: 'img3' }
-    ],
-    userId: 'user123'
+  under_review: { 
+    label: 'Under Review', 
+    color: '#17a2b8', 
+    icon: 'search', 
+    bgColor: theme === 'dark' ? 'rgba(23, 162, 184, 0.2)' : '#d1ecf1' 
   },
-  {
-    id: '3',
-    medicationName: 'Amoxicillin 500mg',
-    description: 'Wrong medication in the bottle. The label indicates one medication but contains different pills.',
-    location: '789 Pine Ln, Anytown, NY',
-    storeName: 'Rite Aid',
-    category: 'Prescription Drugs',
-    severity: 'critical',
-    expirationDate: '2024-12-01',
-    batchNumber: 'BATCH-003',
-    manufacturer: 'Generic Pharma',
-    reportAnonymously: false,
-    status: 'resolved',
-    timestamp: '2023-11-05T09:45:00Z',
-    attachedImages: [],
-    userId: 'user123'
+  resolved: { 
+    label: 'Resolved', 
+    color: '#28a745', 
+    icon: 'check-circle', 
+    bgColor: theme === 'dark' ? 'rgba(40, 167, 69, 0.2)' : '#d4edda' 
   },
-  {
-    id: '4',
-    medicationName: 'Vitamin D3 1000IU',
-    description: 'Unusual taste and smell. The supplement has an off-putting odor and bitter taste.',
-    location: '321 Elm St, Anytown, NY',
-    storeName: 'GNC',
-    category: 'Supplements',
-    severity: 'low',
-    expirationDate: '2025-03-15',
-    batchNumber: 'BATCH-004',
-    manufacturer: 'Nature Made',
-    reportAnonymously: false,
-    status: 'pending',
-    timestamp: '2023-11-20T16:20:00Z',
-    attachedImages: [
-      { uri: 'https://via.placeholder.com/150x150/96CEB4/FFFFFF?text=IMG4', id: 'img4' }
-    ],
-    userId: 'user123'
+  rejected: { 
+    label: 'Rejected', 
+    color: '#dc3545', 
+    icon: 'x-circle', 
+    bgColor: theme === 'dark' ? 'rgba(220, 53, 69, 0.2)' : '#f8d7da' 
   }
-];
+});
 
-const statusConfig = {
-  pending: { label: 'Pending', color: '#ffc107', icon: 'clock', bgColor: '#fff3cd' },
-  under_review: { label: 'Under Review', color: '#17a2b8', icon: 'search', bgColor: '#d1ecf1' },
-  resolved: { label: 'Resolved', color: '#28a745', icon: 'check-circle', bgColor: '#d4edda' },
-  rejected: { label: 'Rejected', color: '#dc3545', icon: 'x-circle', bgColor: '#f8d7da' }
-};
-
-const severityConfig = {
+const getSeverityConfig = (theme) => ({
   low: { label: 'Low', color: '#28a745', icon: 'alert-circle' },
   medium: { label: 'Medium', color: '#ffc107', icon: 'alert-triangle' },
   high: { label: 'High', color: '#fd7e14', icon: 'alert-octagon' },
   critical: { label: 'Critical', color: '#dc3545', icon: 'alert-octagon' }
-};
+});
 
 const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
   const [imageError, setImageError] = useState(false);
@@ -123,9 +67,14 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
     textColor: theme === 'dark' ? '#ffffff' : '#121417',
     mutedText: theme === 'dark' ? '#a0a0a0' : '#677583',
     borderColor: theme === 'dark' ? '#404040' : '#f1f2f4',
-    cardBackground: theme === 'dark' ? '#1a1a1a' : '#ffffff'
+    cardBackground: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+    primaryColor: '#197ce5',
+    warningColor: '#ffc107',
+    dangerColor: '#dc3545'
   };
 
+  const statusConfig = useMemo(() => getStatusConfig(theme), [theme]);
+  const severityConfig = useMemo(() => getSeverityConfig(theme), [theme]);
   const status = statusConfig[report.status] || statusConfig.pending;
   const severity = severityConfig[report.severity] || severityConfig.medium;
 
@@ -294,7 +243,7 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
           style={[styles.actionButton, styles.viewButton]} 
           onPress={() => onView(report)}
         >
-          <Icon name="eye" size={16} color="#197ce5" />
+          <Icon name="eye" size={16} color={dynamicStyles.primaryColor} />
           <Text style={styles.viewButtonText}>View</Text>
         </TouchableOpacity>
 
@@ -302,7 +251,7 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
           style={[styles.actionButton, styles.editButton]} 
           onPress={() => onEdit(report)}
         >
-          <Icon name="edit" size={16} color="#ffc107" />
+          <Icon name="edit" size={16} color={dynamicStyles.warningColor} />
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
 
@@ -310,7 +259,7 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
           style={[styles.actionButton, styles.deleteButton]} 
           onPress={handleDelete}
         >
-          <Icon name="trash-2" size={16} color="#dc3545" />
+          <Icon name="trash-2" size={16} color={dynamicStyles.dangerColor} />
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
@@ -319,7 +268,7 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
 };
 
 export const MyReportsScreen = () => {
-  const [reports, setReports] = useState(initialReports);
+  const [reports, setReports] = useState([]);
   const [deletedReports, setDeletedReports] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -327,6 +276,7 @@ export const MyReportsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const lastDeletedReport = useRef(null);
   const navigation = useNavigation();
@@ -341,7 +291,15 @@ export const MyReportsScreen = () => {
     mutedText: theme === 'dark' ? '#a0a0a0' : '#677583',
     borderColor: theme === 'dark' ? '#404040' : '#f1f2f4',
     inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
-    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff'
+    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
+    primaryColor: '#197ce5',
+    successColor: '#28a745',
+    warningColor: '#ffc107',
+    dangerColor: '#dc3545',
+    infoColor: '#17a2b8',
+    orangeColor: '#fd7e14',
+    whiteColor: '#ffffff',
+    redColor: '#d32f2f'
   };
 
   // Filter and search reports
@@ -376,65 +334,100 @@ export const MyReportsScreen = () => {
     [...new Set(reports.map(report => report.severity))], [reports]
   );
 
-  useEffect(() => {
-    // Handle navigation from ReportForm
-    if (route.params?.newReport) {
-      // Simulate adding a new report
-      const newReport = {
-        id: Date.now().toString(),
-        medicationName: route.params.medicationName || 'New Medication',
-        description: route.params.description || 'New report description',
-        location: route.params.location || 'Location not specified',
-        storeName: route.params.storeName || 'Store not specified',
-        category: route.params.category || 'Other',
-        severity: route.params.severity || 'medium',
-        expirationDate: route.params.expirationDate || new Date().toISOString(),
-        batchNumber: route.params.batchNumber || '',
-        manufacturer: route.params.manufacturer || '',
-        reportAnonymously: route.params.reportAnonymously || false,
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        attachedImages: route.params.attachedImages || [],
-        userId: user?.id || 'user123'
-      };
-      
-      setReports(prev => [newReport, ...prev]);
-      
-      // Clear navigation params
-      navigation.setParams({ newReport: undefined });
+  // Load reports from storage
+  const loadReports = async () => {
+    try {
+      setIsLoading(true);
+      const userId = user?.id || 'user123';
+      console.log('🔍 MyReportsScreen: Loading reports for user:', user);
+      console.log('🔍 MyReportsScreen: Using userId:', userId);
+      const storedReports = await reportsStorage.getReports(userId);
+      console.log('📊 MyReportsScreen: Loaded reports:', storedReports);
+      setReports(storedReports);
+    } catch (error) {
+      console.error('❌ MyReportsScreen: Error loading reports:', error);
+      Alert.alert('Error', 'Failed to load reports. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [route.params, navigation, user]);
+  };
 
-  const handleDelete = (reportId) => {
+  // Load deleted reports from storage
+  const loadDeletedReports = async () => {
+    try {
+      const deleted = await reportsStorage.getDeletedReports();
+      setDeletedReports(deleted);
+    } catch (error) {
+      console.error('Error loading deleted reports:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+    loadDeletedReports();
+  }, [user]);
+
+  // Handle focus event to reload reports when screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadReports();
+      loadDeletedReports();
+    });
+
+    return unsubscribe;
+  }, [navigation, user]);
+
+  const handleDelete = async (reportId) => {
     const reportIndex = reports.findIndex(r => r.id === reportId);
     const deleted = reports[reportIndex];
     lastDeletedReport.current = { ...deleted, index: reportIndex };
     
-    setDeletedReports(prev => [...prev, deleted]);
-    setReports(prev => prev.filter(r => r.id !== reportId));
+    try {
+      // Remove from main storage
+      await reportsStorage.deleteReport(reportId);
+      
+      // Save to deleted reports storage
+      await reportsStorage.saveDeletedReport(deleted);
+      
+      setDeletedReports(prev => [...prev, deleted]);
+      setReports(prev => prev.filter(r => r.id !== reportId));
 
-    Toast.show({
-      type: 'info',
-      text1: 'Report moved to Recycle Bin',
-      text2: 'Tap to undo',
-      onPress: () => handleUndo(),
-      visibilityTime: 5000,
-    });
+      Toast.show({
+        type: 'info',
+        text1: 'Report deleted successfully',
+        text2: 'Tap to undo',
+        onPress: () => handleUndo(),
+        visibilityTime: 5000,
+      });
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      Alert.alert('Error', 'Failed to delete report. Please try again.');
+    }
   };
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     const { index, ...report } = lastDeletedReport.current || {};
     if (report && typeof index === 'number') {
-      const restored = [...reports];
-      restored.splice(index, 0, report);
-      setReports(restored);
+      try {
+        // Restore to storage with original ID and data
+        await reportsStorage.restoreReport(report);
+        
+        // Remove from deleted reports storage
+        await reportsStorage.removeDeletedReport(report.id);
+        
+        // Reload reports from storage to avoid duplicates
+        await loadReports();
 
-      setDeletedReports(prev =>
-        prev.filter(item => item.id !== report.id)
-      );
+        setDeletedReports(prev =>
+          prev.filter(item => item.id !== report.id)
+        );
 
-      lastDeletedReport.current = null;
-      Toast.hide();
+        lastDeletedReport.current = null;
+        Toast.hide();
+      } catch (error) {
+        console.error('Error restoring report:', error);
+        Alert.alert('Error', 'Failed to restore report. Please try again.');
+      }
     }
   };
 
@@ -447,13 +440,26 @@ export const MyReportsScreen = () => {
   };
 
   const goToRecycleBin = () => {
-    navigation.navigate('RecycleBin', { deletedReports });
+    navigation.navigate('RecycleBin', { 
+      deletedReports,
+      // Pass a callback ID instead of the function directly
+      onRestore: 'restoreFromBin'
+    });
   };
+
+  // Handle restore callback from RecycleBin screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Reload reports when returning from RecycleBin
+      loadReports();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const onRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate API call to refresh data
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await loadReports();
     setIsRefreshing(false);
   };
 
@@ -469,7 +475,7 @@ export const MyReportsScreen = () => {
       <View style={styles.filterHeader}>
         <Text style={[styles.filterTitle, { color: dynamicStyles.textColor }]}>Filters</Text>
         <TouchableOpacity onPress={clearFilters}>
-          <Text style={[styles.clearFiltersText, { color: '#197ce5' }]}>Clear All</Text>
+          <Text style={[styles.clearFiltersText, { color: dynamicStyles.primaryColor }]}>Clear All</Text>
         </TouchableOpacity>
       </View>
 
@@ -481,7 +487,7 @@ export const MyReportsScreen = () => {
             style={[
               styles.filterChip,
               { 
-                backgroundColor: selectedStatus === 'all' ? '#197ce5' : dynamicStyles.inputBackground,
+                backgroundColor: selectedStatus === 'all' ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                 borderColor: dynamicStyles.borderColor
               }
             ]}
@@ -489,7 +495,7 @@ export const MyReportsScreen = () => {
           >
             <Text style={[
               styles.filterChipText,
-              { color: selectedStatus === 'all' ? '#ffffff' : dynamicStyles.textColor }
+              { color: selectedStatus === 'all' ? dynamicStyles.whiteColor : dynamicStyles.textColor }
             ]}>
               All
             </Text>
@@ -500,7 +506,7 @@ export const MyReportsScreen = () => {
               style={[
                 styles.filterChip,
                 { 
-                  backgroundColor: selectedStatus === status ? '#197ce5' : dynamicStyles.inputBackground,
+                  backgroundColor: selectedStatus === status ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                   borderColor: dynamicStyles.borderColor
                 }
               ]}
@@ -508,7 +514,7 @@ export const MyReportsScreen = () => {
             >
               <Text style={[
                 styles.filterChipText,
-                { color: selectedStatus === status ? '#ffffff' : dynamicStyles.textColor }
+                { color: selectedStatus === status ? dynamicStyles.whiteColor : dynamicStyles.textColor }
               ]}>
                 {statusConfig[status]?.label || status}
               </Text>
@@ -525,7 +531,7 @@ export const MyReportsScreen = () => {
             style={[
               styles.filterChip,
               { 
-                backgroundColor: selectedSeverity === 'all' ? '#197ce5' : dynamicStyles.inputBackground,
+                backgroundColor: selectedSeverity === 'all' ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                 borderColor: dynamicStyles.borderColor
               }
             ]}
@@ -533,7 +539,7 @@ export const MyReportsScreen = () => {
           >
             <Text style={[
               styles.filterChipText,
-              { color: selectedSeverity === 'all' ? '#ffffff' : dynamicStyles.textColor }
+              { color: selectedSeverity === 'all' ? dynamicStyles.whiteColor : dynamicStyles.textColor }
             ]}>
               All
             </Text>
@@ -544,7 +550,7 @@ export const MyReportsScreen = () => {
               style={[
                 styles.filterChip,
                 { 
-                  backgroundColor: selectedSeverity === severity ? '#197ce5' : dynamicStyles.inputBackground,
+                  backgroundColor: selectedSeverity === severity ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                   borderColor: dynamicStyles.borderColor
                 }
               ]}
@@ -552,7 +558,7 @@ export const MyReportsScreen = () => {
             >
               <Text style={[
                 styles.filterChipText,
-                { color: selectedSeverity === severity ? '#ffffff' : dynamicStyles.textColor }
+                { color: selectedSeverity === severity ? dynamicStyles.whiteColor : dynamicStyles.textColor }
               ]}>
                 {severityConfig[severity]?.label || severity}
               </Text>
@@ -569,7 +575,7 @@ export const MyReportsScreen = () => {
             style={[
               styles.filterChip,
               { 
-                backgroundColor: selectedCategory === 'all' ? '#197ce5' : dynamicStyles.inputBackground,
+                backgroundColor: selectedCategory === 'all' ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                 borderColor: dynamicStyles.borderColor
               }
             ]}
@@ -577,7 +583,7 @@ export const MyReportsScreen = () => {
           >
             <Text style={[
               styles.filterChipText,
-              { color: selectedCategory === 'all' ? '#ffffff' : dynamicStyles.textColor }
+              { color: selectedCategory === 'all' ? dynamicStyles.whiteColor : dynamicStyles.textColor }
             ]}>
               All
             </Text>
@@ -588,7 +594,7 @@ export const MyReportsScreen = () => {
               style={[
                 styles.filterChip,
                 { 
-                  backgroundColor: selectedCategory === category ? '#197ce5' : dynamicStyles.inputBackground,
+                  backgroundColor: selectedCategory === category ? dynamicStyles.primaryColor : dynamicStyles.inputBackground,
                   borderColor: dynamicStyles.borderColor
                 }
               ]}
@@ -596,7 +602,7 @@ export const MyReportsScreen = () => {
             >
               <Text style={[
                 styles.filterChipText,
-                { color: selectedCategory === category ? '#ffffff' : dynamicStyles.textColor }
+                { color: selectedCategory === category ? dynamicStyles.whiteColor : dynamicStyles.textColor }
               ]}>
                 {category}
               </Text>
@@ -620,7 +626,7 @@ export const MyReportsScreen = () => {
         }
       </Text>
       <TouchableOpacity
-        style={[styles.emptyStateButton, { backgroundColor: '#197ce5' }]}
+        style={[styles.emptyStateButton, { backgroundColor: dynamicStyles.primaryColor }]}
         onPress={() => navigation.navigate('ReportForm')}
       >
         <Text style={styles.emptyStateButtonText}>Create Report</Text>
@@ -645,11 +651,11 @@ export const MyReportsScreen = () => {
               <Icon 
                 name={showFilters ? "x" : "filter"} 
                 size={20} 
-                color={showFilters ? dynamicStyles.textColor : '#197ce5'} 
+                color={showFilters ? dynamicStyles.textColor : dynamicStyles.primaryColor} 
               />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={goToRecycleBin}>
-              <Icon name="trash-2" size={22} color="#d32f2f" />
+              <Icon name="trash-2" size={22} color={dynamicStyles.redColor} />
             </TouchableOpacity>
           </View>
         </View>
@@ -690,13 +696,35 @@ export const MyReportsScreen = () => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              colors={['#197ce5']}
-              tintColor={theme === 'dark' ? '#ffffff' : '#197ce5'}
+              colors={[dynamicStyles.primaryColor]}
+              tintColor={theme === 'dark' ? dynamicStyles.whiteColor : dynamicStyles.primaryColor}
             />
           }
           showsVerticalScrollIndicator={false}
         >
-          {filteredReports.length === 0 ? (
+          {(() => {
+            console.log('🎯 MyReportsScreen Render Debug:');
+            console.log('📊 Total reports:', reports.length);
+            console.log('📊 Filtered reports:', filteredReports.length);
+            console.log('📊 Is loading:', isLoading);
+            console.log('📊 Search query:', searchQuery);
+            console.log('📊 Selected status:', selectedStatus);
+            console.log('📊 Selected severity:', selectedSeverity);
+            console.log('📊 Selected category:', selectedCategory);
+            if (reports.length > 0) {
+              console.log('📊 Sample report:', reports[0]);
+            }
+            return null;
+          })()}
+          
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={dynamicStyles.primaryColor} />
+              <Text style={[styles.loadingText, { color: dynamicStyles.mutedText }]}>
+                Loading reports...
+              </Text>
+            </View>
+          ) : filteredReports.length === 0 ? (
             renderEmptyState()
           ) : (
             filteredReports.map((report) => (
@@ -739,26 +767,6 @@ export const MyReportsScreen = () => {
           <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Locations</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate('Alerts')}>
-          <Icon name="bell" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Alerts</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate('Education')}>
-          <Icon name="book-open" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Education</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate('Forum')}>
-          <Icon name="users" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Forum</Text>
-        </TouchableOpacity>
       </View>
 
       <Toast />
@@ -1118,5 +1126,16 @@ const styles = StyleSheet.create({
   footerButtonActive: {},
   footerButtonTextActive: {
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: 'center',
   },
 });

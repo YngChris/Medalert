@@ -1,18 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, View, StyleSheet, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
+import { Text, View, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-
-// Try different import approaches
-import * as ExpoCamera from 'expo-camera';
+import { Camera } from 'expo-camera';
 
 export default function BarcodeScannerScreen() {
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
+        <Text style={{ fontSize: 16, marginBottom: 8 }}>Barcode scanning is not available on web.</Text>
+        <Text style={{ opacity: 0.7, textAlign: 'center', paddingHorizontal: 24 }}>
+          Please use a mobile device or the native app to scan barcodes.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
-  const [flash, setFlash] = useState('off');
-  const [cameraAvailable, setCameraAvailable] = useState(false);
-  const cameraRef = useRef(null);
+  const [flashOn, setFlashOn] = useState(false);
   const navigation = useNavigation();
   const { theme } = useTheme();
 
@@ -26,173 +33,28 @@ export default function BarcodeScannerScreen() {
     overlayBackground: theme === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
   };
 
-  // Check camera availability and request permissions
+  // Request camera permissions
   useEffect(() => {
-    const checkCameraAvailability = async () => {
-      try {
-        console.log('Checking camera availability...');
-        console.log('Camera import:', ExpoCamera);
-        console.log('Camera type:', typeof ExpoCamera);
-        console.log('Camera constructor:', ExpoCamera?.constructor?.name);
-        console.log('Camera prototype:', ExpoCamera?.prototype);
-        console.log('Camera keys:', Object.keys(ExpoCamera || {}));
-        console.log('Camera.Constants:', ExpoCamera?.Constants);
-        console.log('CameraType:', ExpoCamera.CameraType);
-        
-        // Check if Camera component is available
-        if (ExpoCamera && ExpoCamera.Camera && typeof ExpoCamera.Camera === 'function') {
-          console.log('Camera component available:', ExpoCamera.Camera);
-          setCameraAvailable(true);
-          
-          // Request camera permissions
-          try {
-            if (ExpoCamera.requestCameraPermissionsAsync) {
-              const { status } = await ExpoCamera.requestCameraPermissionsAsync();
-              setHasPermission(status === 'granted');
-            } else {
-              console.error('Camera permission request not available');
-              setHasPermission(false);
-            }
-          } catch (permissionError) {
-            console.error('Error requesting camera permission:', permissionError);
-            setHasPermission(false);
-          }
-        } else {
-          console.error('Camera component not available or not a function');
-          console.log('Camera type:', typeof ExpoCamera);
-          console.log('Camera value:', ExpoCamera);
-          console.log('ExpoCamera.Camera:', ExpoCamera?.Camera);
-          console.log('ExpoCamera.Camera type:', typeof ExpoCamera?.Camera);
-          setCameraAvailable(false);
-        }
-      } catch (error) {
-        console.error('Error checking camera availability:', error);
-        setCameraAvailable(false);
-      }
+    const getCameraPermissions = async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
     };
 
-    // Add a small delay to ensure the component is fully mounted
-    const timer = setTimeout(checkCameraAvailability, 100);
-    return () => clearTimeout(timer);
+    getCameraPermissions();
   }, []);
 
-  // Debug logging for Camera state
-  useEffect(() => {
-    console.log('Camera state updated:', {
-      cameraAvailable,
-      hasCamera: !!ExpoCamera,
-      cameraType: typeof ExpoCamera,
-      cameraIsFunction: typeof ExpoCamera === 'object'
-    });
-  }, [cameraAvailable]);
-
-  // Show loading state while checking camera availability
-  if (hasPermission === null || !cameraAvailable) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}>
-        <View style={styles.permissionContainer}>
-          <Text style={[styles.permissionText, { color: dynamicStyles.textColor }]}>
-            {!cameraAvailable ? 'Camera not available' : 'Requesting camera permission...'}
-          </Text>
-          <Text style={[styles.permissionSubtext, { color: dynamicStyles.mutedText }]}>
-            {!cameraAvailable 
-              ? 'Please check your device camera settings or reinstall the app'
-              : 'Please wait while we set up the camera...'
-            }
-          </Text>
-          {!cameraAvailable && (
-            <TouchableOpacity 
-              style={styles.rescanButton} 
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.rescanText}>Go Back</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // If camera is not available, show fallback
-  if (!ExpoCamera || !ExpoCamera.Camera) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}>
-        <View style={styles.permissionContainer}>
-          <Text style={[styles.permissionText, { color: dynamicStyles.textColor }]}>
-            Camera Component Error
-          </Text>
-          <Text style={[styles.permissionSubtext, { color: dynamicStyles.mutedText }]}>
-            The camera component could not be loaded. This might be due to a compatibility issue.
-          </Text>
-          <TouchableOpacity 
-            style={styles.rescanButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.rescanText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Safe access to Camera constants
-  const getFlashMode = () => {
-    try {
-      // Use the correct Camera constants
-      if (ExpoCamera && ExpoCamera.Constants && ExpoCamera.Constants.FlashMode) {
-        return ExpoCamera.Constants.FlashMode;
-      }
-      // Fallback values if Camera constants are not available
-      return {
-        off: 'off',
-        torch: 'torch'
-      };
-    } catch (error) {
-      console.log('Camera constants not available, using fallback values');
-      return {
-        off: 'off',
-        torch: 'torch'
-      };
-    }
-  };
-
-  const handleBarCodeScanned = ({ data }) => {
+  const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
     try {
-      console.log('Raw scanned data:', data);
+      console.log('Raw scanned data:', data, 'Type:', type);
       
-      // Try to parse as JSON first
-      let parsed;
-      try {
-        parsed = JSON.parse(data);
-      } catch (e) {
-        // If not JSON, create a simple object with the data
-        parsed = { 
-          medicationName: data,
-          rawData: data,
-          scannedAt: new Date().toISOString()
-        };
-      }
+      // Process different barcode types
+      let processedData = processBarcodeData(data, type);
       
-      // Validate the parsed data
-      if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Invalid data format');
-      }
-      
-      // Ensure we have at least a medication name
-      if (!parsed.medicationName && !parsed.rawData) {
-        throw new Error('No medication information found');
-      }
-      
-      // Add timestamp if not present
-      if (!parsed.scannedAt) {
-        parsed.scannedAt = new Date().toISOString();
-      }
-      
-      console.log('Processed scanned data:', parsed);
+      console.log('Processed scanned data:', processedData);
       
       // Navigate back with the scanned data
-      navigation.navigate('ReportForm', { scannedMedication: parsed });
+      navigation.navigate('ReportForm', { scannedMedication: processedData });
       
     } catch (error) {
       console.error('Error processing scanned data:', error);
@@ -207,14 +69,147 @@ export default function BarcodeScannerScreen() {
     }
   };
 
-  const toggleFlash = () => {
-    const flashModes = getFlashMode();
-    setFlash(
-      flash === flashModes.torch
-        ? flashModes.off
-        : flashModes.torch
-    );
+  const processBarcodeData = (data, type) => {
+    // Add timestamp
+    const timestamp = new Date().toISOString();
+    
+    // Try to parse as JSON first (for QR codes with structured data)
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...parsed,
+          scannedAt: timestamp,
+          barcodeType: type,
+          rawData: data
+        };
+      }
+    } catch (e) {
+      // Not JSON, continue with other processing
+    }
+
+    // Handle different barcode types
+    switch (type) {
+      case 'qr':
+        // For QR codes, try to extract medication info from text
+        return extractMedicationInfo(data, type, timestamp);
+      
+      case 'ean13':
+      case 'ean8':
+      case 'upc_a':
+      case 'upc_e':
+        // For product barcodes, use the barcode as product identifier
+        return {
+          medicationName: `Product ${data}`,
+          barcodeNumber: data,
+          barcodeType: type,
+          scannedAt: timestamp,
+          rawData: data
+        };
+      
+      case 'code128':
+      case 'code39':
+      case 'code93':
+        // For other barcodes, treat as generic identifier
+        return {
+          medicationName: data,
+          barcodeType: type,
+          scannedAt: timestamp,
+          rawData: data
+        };
+      
+      default:
+        // Default fallback
+        return {
+          medicationName: data,
+          barcodeType: type,
+          scannedAt: timestamp,
+          rawData: data
+        };
+    }
   };
+
+  const extractMedicationInfo = (data, type, timestamp) => {
+    // Try to extract medication information from text
+    const lowerData = data.toLowerCase();
+    
+    // Look for common medication patterns
+    const medicationPatterns = [
+      /medication[:\s]+([^\n\r,]+)/i,
+      /drug[:\s]+([^\n\r,]+)/i,
+      /medicine[:\s]+([^\n\r,]+)/i,
+      /name[:\s]+([^\n\r,]+)/i
+    ];
+    
+    let medicationName = null;
+    for (const pattern of medicationPatterns) {
+      const match = data.match(pattern);
+      if (match && match[1]) {
+        medicationName = match[1].trim();
+        break;
+      }
+    }
+    
+    // Look for batch number patterns
+    const batchPatterns = [
+      /batch[:\s]+([^\n\r,]+)/i,
+      /lot[:\s]+([^\n\r,]+)/i,
+      /batch\s*#?\s*([^\n\r,]+)/i
+    ];
+    
+    let batchNumber = null;
+    for (const pattern of batchPatterns) {
+      const match = data.match(pattern);
+      if (match && match[1]) {
+        batchNumber = match[1].trim();
+        break;
+      }
+    }
+    
+    // Look for manufacturer patterns
+    const manufacturerPatterns = [
+      /manufacturer[:\s]+([^\n\r,]+)/i,
+      /made\s+by[:\s]+([^\n\r,]+)/i,
+      /producer[:\s]+([^\n\r,]+)/i
+    ];
+    
+    let manufacturer = null;
+    for (const pattern of manufacturerPatterns) {
+      const match = data.match(pattern);
+      if (match && match[1]) {
+        manufacturer = match[1].trim();
+        break;
+      }
+    }
+    
+    return {
+      medicationName: medicationName || data,
+      batchNumber,
+      manufacturer,
+      barcodeType: type,
+      scannedAt: timestamp,
+      rawData: data
+    };
+  };
+
+  const toggleFlash = () => {
+    setFlashOn(!flashOn);
+  };
+
+  if (hasPermission === null) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}>
+        <View style={styles.permissionContainer}>
+          <Text style={[styles.permissionText, { color: dynamicStyles.textColor }]}>
+            Requesting camera permission...
+          </Text>
+          <Text style={[styles.permissionSubtext, { color: dynamicStyles.mutedText }]}>
+            Please wait while we set up the camera...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (hasPermission === false) {
     return (
@@ -239,100 +234,52 @@ export default function BarcodeScannerScreen() {
 
   return (
     <View style={styles.container}>
-      {cameraAvailable && ExpoCamera && ExpoCamera.Camera && typeof ExpoCamera.Camera === 'function' ? (
-        (() => {
-          try {
-            return (
-              <ExpoCamera.Camera
-                ref={cameraRef}
-                style={StyleSheet.absoluteFillObject}
-                flashMode={flash}
-                onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-                barCodeScannerSettings={{
-                  barCodeTypes: [
-                    'qr',
-                    'code128',
-                    'code39',
-                    'code93',
-                    'ean13',
-                    'ean8',
-                    'upc_a',
-                    'upc_e',
-                    'pdf417',
-                    'aztec',
-                    'datamatrix',
-                    'itf14',
-                  ],
-                }}
-              >
-                <View style={styles.overlay}>
-                  {/* Scanning Frame */}
-                  <View style={styles.scanBox} />
-                  
-                  {/* Instructions */}
-                  <Text style={styles.instructionText}>
-                    Position the barcode within the frame
-                  </Text>
-                  
-                  {/* Flashlight Toggle */}
-                  <TouchableOpacity style={styles.flashToggle} onPress={toggleFlash}>
-                    <MaterialIcons
-                      name={flash === 'torch' ? 'flash-on' : 'flash-off'}
-                      size={28}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  
-                  {/* Scan again button */}
-                  {scanned && (
-                    <TouchableOpacity style={styles.rescanButton} onPress={() => setScanned(false)}>
-                      <Text style={styles.rescanText}>Scan Again</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </ExpoCamera.Camera>
-            );
-          } catch (error) {
-            console.error('Error rendering Camera component:', error);
-            return (
-              <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={[styles.permissionText, { color: dynamicStyles.textColor }]}>
-                  Camera Render Error
-                </Text>
-                <Text style={[styles.permissionSubtext, { color: dynamicStyles.mutedText }]}>
-                  There was an error rendering the camera. Please try again.
-                </Text>
-                <TouchableOpacity 
-                  style={styles.rescanButton} 
-                  onPress={() => navigation.goBack()}
-                >
-                  <Text style={styles.rescanText}>Go Back</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          }
-        })()
-      ) : (
-        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={[styles.permissionText, { color: dynamicStyles.textColor }]}>
-            {!cameraAvailable ? 'Camera not available' : 'Loading camera...'}
+      <Camera
+        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        style={StyleSheet.absoluteFillObject}
+        flashMode={flashOn ? Camera.Constants.FlashMode.torch : Camera.Constants.FlashMode.off}
+        barCodeScannerSettings={{
+          barCodeTypes: [
+            Camera.Constants.BarCodeType.qr,
+            Camera.Constants.BarCodeType.code128,
+            Camera.Constants.BarCodeType.code39,
+            Camera.Constants.BarCodeType.code93,
+            Camera.Constants.BarCodeType.ean13,
+            Camera.Constants.BarCodeType.ean8,
+            Camera.Constants.BarCodeType.upc_a,
+            Camera.Constants.BarCodeType.upc_e,
+            Camera.Constants.BarCodeType.pdf417,
+            Camera.Constants.BarCodeType.aztec,
+            Camera.Constants.BarCodeType.datamatrix,
+          ],
+        }}
+      >
+        <View style={styles.overlay}>
+          {/* Scanning Frame */}
+          <View style={styles.scanBox} />
+          
+          {/* Instructions */}
+          <Text style={styles.instructionText}>
+            Position the barcode within the frame
           </Text>
-          <Text style={[styles.permissionSubtext, { color: dynamicStyles.mutedText }]}>
-            {!cameraAvailable 
-              ? 'Please check your device camera settings or reinstall the app'
-              : 'Please wait while we set up the camera...'
-            }
-          </Text>
-          {!cameraAvailable && (
-            <TouchableOpacity 
-              style={styles.rescanButton} 
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.rescanText}>Go Back</Text>
+          
+          {/* Flashlight Toggle */}
+          <TouchableOpacity style={styles.flashToggle} onPress={toggleFlash}>
+            <MaterialIcons
+              name={flashOn ? 'flash-on' : 'flash-off'}
+              size={28}
+              color="white"
+            />
+          </TouchableOpacity>
+          
+          {/* Scan again button */}
+          {scanned && (
+            <TouchableOpacity style={styles.rescanButton} onPress={() => setScanned(false)}>
+              <Text style={styles.rescanText}>Scan Again</Text>
             </TouchableOpacity>
           )}
         </View>
-      )}
+      </Camera>
     </View>
   );
 }

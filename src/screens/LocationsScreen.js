@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,80 +9,16 @@ import {
   SafeAreaView,
   Alert,
   Image,
+  ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/Feather";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTheme } from '../context/ThemeContext';
 import MapView, { Marker, Callout } from "react-native-maps";
-
-// Enhanced location data
-const locationsData = [
-  {
-    id: "1",
-    name: "MediCare Pharmacy",
-    type: "Pharmacy",
-    status: "Clear",
-    rating: 4.8,
-    distance: "0.2 km",
-    address: "123 Main Street, Accra",
-    phone: "+233 20 123 4567",
-    lat: 5.6037,
-    lng: -0.187,
-    image: "https://via.placeholder.com/150x150/4ECDC4/FFFFFF?text=PH",
-  },
-  {
-    id: "2",
-    name: "Accra Medical Clinic",
-    type: "Clinic",
-    status: "Under Review",
-    rating: 4.2,
-    distance: "0.5 km",
-    address: "456 Oak Avenue, Accra",
-    phone: "+233 20 234 5678",
-    lat: 5.609,
-    lng: -0.19,
-    image: "https://via.placeholder.com/150x150/45B7D1/FFFFFF?text=CL",
-  },
-  {
-    id: "3",
-    name: "Ghana General Hospital",
-    type: "Hospital",
-    status: "Flagged",
-    rating: 3.9,
-    distance: "1.2 km",
-    address: "789 Pine Lane, Accra",
-    phone: "+233 20 345 6789",
-    lat: 5.6105,
-    lng: -0.185,
-    image: "https://via.placeholder.com/150x150/FF6B6B/FFFFFF?text=HO",
-  },
-  {
-    id: "4",
-    name: "Wellness Plus Center",
-    type: "Wellness Center",
-    status: "Clear",
-    rating: 4.6,
-    distance: "1.8 km",
-    address: "321 Elm Street, Accra",
-    phone: "+233 20 456 7890",
-    lat: 5.615,
-    lng: -0.2,
-    image: "https://via.placeholder.com/150x150/96CEB4/FFFFFF?text=WC",
-  },
-  {
-    id: "5",
-    name: "Community Drug Store",
-    type: "Pharmacy",
-    status: "Warning",
-    rating: 3.5,
-    distance: "2.1 km",
-    address: "654 Maple Road, Accra",
-    phone: "+233 20 567 8901",
-    lat: 5.618,
-    lng: -0.195,
-    image: "https://via.placeholder.com/150x150/FFE66D/FFFFFF?text=DS",
-  }
-];
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { locationsStorage } from '../utils/locationsStorage';
+import Toast from 'react-native-toast-message';
 
 const LocationsScreen = () => {
   const navigation = useNavigation();
@@ -91,6 +27,16 @@ const LocationsScreen = () => {
 
   const [searchText, setSearchText] = useState("");
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showPlacesSearch, setShowPlacesSearch] = useState(false);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: 5.6037,
+    longitude: -0.187,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
 
   // Theme-aware styles
   const dynamicStyles = {
@@ -103,24 +49,121 @@ const LocationsScreen = () => {
     primaryColor: '#197ce5',
   };
 
-  // Filter locations based on search
-  const filteredLocations = locationsData.filter((location) =>
+  // Load locations from storage
+  const loadLocations = async () => {
+    try {
+      setLoading(true);
+      const storedLocations = await locationsStorage.getAllLocations();
+      setLocations(storedLocations);
+    } catch (error) {
+      console.error('Error loading locations:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load locations. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load locations when screen mounts and when it comes into focus
+  useEffect(() => {
+    loadLocations();
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadLocations();
+    }, [])
+  );
+
+  // Filter locations based on search (with null check)
+  const filteredLocations = (locations || []).filter((location) =>
     location.name.toLowerCase().includes(searchText.toLowerCase()) ||
     location.address.toLowerCase().includes(searchText.toLowerCase())
   );
 
+  // Combine filtered locations with search results
+  const allDisplayLocations = [...filteredLocations, ...(searchResults || [])];
+
   const handleLocationPress = (location) => {
     setSelectedLocation(location);
+    const newRegion = {
+      latitude: location.lat,
+      longitude: location.lng,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+    setMapRegion(newRegion);
     if (mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: location.lat,
-          longitude: location.lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        1000
-      );
+      mapRef.current.animateToRegion(newRegion, 1000);
+    }
+  };
+
+  const handlePlaceSelect = (data, details) => {
+    if (details) {
+      const { geometry, name, formatted_address, place_id } = details;
+      const newLocation = {
+        id: `search_${place_id}`,
+        name: name || data.description,
+        address: formatted_address || data.description,
+        lat: geometry.location.lat,
+        lng: geometry.location.lng,
+        type: "Search Result",
+        status: "Clear",
+        rating: 0,
+        distance: "Unknown",
+        phone: "N/A",
+        image: "https://via.placeholder.com/150x150/96CEB4/FFFFFF?text=LOC",
+        isUserAdded: false,
+        isSearchResult: true,
+      };
+      
+      setSearchResults([newLocation]);
+      setSelectedLocation(newLocation);
+      
+      const newRegion = {
+        latitude: geometry.location.lat,
+        longitude: geometry.location.lng,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      setMapRegion(newRegion);
+      
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 1000);
+      }
+      
+      setShowPlacesSearch(false);
+    }
+  };
+
+  const handleAddSearchResult = async (location) => {
+    try {
+      const locationData = {
+        name: location.name,
+        address: location.address,
+        lat: location.lat,
+        lng: location.lng,
+        type: location.type,
+        phone: location.phone,
+      };
+      
+      await locationsStorage.addLocation(locationData);
+      await loadLocations();
+      
+      // Remove from search results
+      setSearchResults([]);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Location Added',
+        text2: `${location.name} has been added to your locations.`,
+      });
+    } catch (error) {
+      console.error('Error adding search result:', error);
+      Alert.alert('Error', 'Failed to add location. Please try again.');
     }
   };
 
@@ -143,6 +186,39 @@ const LocationsScreen = () => {
       location: location.name,
       address: location.address 
     });
+  };
+
+  const handleDeleteLocation = (location) => {
+    if (!location.isUserAdded) {
+      Alert.alert('Cannot Delete', 'Default locations cannot be deleted.');
+      return;
+    }
+
+    Alert.alert(
+      'Delete Location',
+      `Are you sure you want to delete "${location.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await locationsStorage.deleteLocation(location.id);
+              await loadLocations();
+              Toast.show({
+                type: 'success',
+                text1: 'Location Deleted',
+                text2: `${location.name} has been removed.`,
+              });
+            } catch (error) {
+              console.error('Error deleting location:', error);
+              Alert.alert('Error', 'Failed to delete location. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getStatusColor = (status) => {
@@ -231,6 +307,98 @@ const LocationsScreen = () => {
             Report
           </Text>
         </TouchableOpacity>
+
+        {location.isUserAdded && (
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#dc354515' }]}
+            onPress={() => handleDeleteLocation(location)}
+          >
+            <Icon name="trash-2" size={16} color="#dc3545" />
+            <Text style={[styles.actionButtonText, { color: '#dc3545' }]}>
+              Delete
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderSearchResultCard = (location) => (
+    <TouchableOpacity
+      key={location.id}
+      style={[styles.locationCard, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]}
+      onPress={() => handleLocationPress(location)}
+    >
+      <View style={styles.cardHeader}>
+        <Image source={{ uri: location.image }} style={styles.locationImage} />
+        <View style={styles.cardHeaderContent}>
+          <Text style={[styles.locationName, { color: dynamicStyles.textColor }]}>
+            {location.name}
+          </Text>
+          <Text style={[styles.locationType, { color: dynamicStyles.mutedText }]}>
+            {location.type}
+          </Text>
+          <View style={styles.ratingContainer}>
+            <Icon name="star" size={14} color="#ffc107" />
+            <Text style={[styles.rating, { color: dynamicStyles.mutedText }]}>
+              {location.rating} • {location.distance}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statusContainer}>
+          <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(location.status)}15` }]}>
+            <Icon name={getStatusIcon(location.status)} size={12} color={getStatusColor(location.status)} />
+            <Text style={[styles.statusText, { color: getStatusColor(location.status) }]}>
+              {location.status}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <Text style={[styles.locationAddress, { color: dynamicStyles.mutedText }]}>
+        {location.address}
+      </Text>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: `${dynamicStyles.primaryColor}15` }]}
+          onPress={() => handleCall(location.phone)}
+        >
+          <Icon name="phone" size={16} color={dynamicStyles.primaryColor} />
+          <Text style={[styles.actionButtonText, { color: dynamicStyles.primaryColor }]}>
+            Call
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#10b98115' }]}
+          onPress={() => handleNavigate(location)}
+        >
+          <Icon name="navigation" size={16} color="#10b981" />
+          <Text style={[styles.actionButtonText, { color: '#10b981' }]}>
+            Navigate
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#f59e0b15' }]}
+          onPress={() => handleReportIssue(location)}
+        >
+          <Icon name="alert-triangle" size={16} color="#f59e0b" />
+          <Text style={[styles.actionButtonText, { color: '#f59e0b' }]}>
+            Report
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: '#4CAF50' }]}
+          onPress={() => handleAddSearchResult(location)}
+        >
+          <Icon name="plus" size={16} color="#ffffff" />
+          <Text style={[styles.actionButtonText, { color: '#ffffff' }]}>
+            Add to My Locations
+          </Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -248,37 +416,125 @@ const LocationsScreen = () => {
 
         <Text style={[styles.headerTitle, { color: dynamicStyles.textColor }]}>Locations</Text>
 
-        <View style={{ width: 48 }} />
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('AddLocation')}
+        >
+          <Icon name="plus" size={24} color={dynamicStyles.textColor} />
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchSection}>
-        <View style={[styles.searchInputWrapper, { backgroundColor: dynamicStyles.inputBackground }]}>
-          <Icon
-            name="search"
-            size={20}
-            color={dynamicStyles.mutedText}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={[styles.searchInput, { color: dynamicStyles.textColor }]}
-            placeholder="Search locations..."
-            placeholderTextColor={dynamicStyles.mutedText}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
-              <Icon name="x" size={20} color={dynamicStyles.mutedText} />
+        {!showPlacesSearch ? (
+          <View style={styles.searchToggleContainer}>
+            <View style={[styles.searchInputWrapper, { backgroundColor: dynamicStyles.inputBackground, flex: 1 }]}>
+              <Icon
+                name="search"
+                size={20}
+                color={dynamicStyles.mutedText}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={[styles.searchInput, { color: dynamicStyles.textColor }]}
+                placeholder="Search saved locations..."
+                placeholderTextColor={dynamicStyles.mutedText}
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+              {searchText.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchText('')}>
+                  <Icon name="x" size={20} color={dynamicStyles.mutedText} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.placesSearchButton, { backgroundColor: dynamicStyles.primaryColor }]}
+              onPress={() => setShowPlacesSearch(true)}
+            >
+              <Icon name="map-pin" size={20} color="#ffffff" />
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        ) : (
+          <View style={styles.placesSearchContainer}>
+            <GooglePlacesAutocomplete
+              placeholder="Search places on Google Maps..."
+              onPress={handlePlaceSelect}
+              query={{
+                key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+                language: 'en',
+                components: 'country:gh', // Restrict to Ghana
+              }}
+              fetchDetails={true}
+              styles={{
+                container: {
+                  flex: 1,
+                },
+                textInputContainer: {
+                  backgroundColor: dynamicStyles.inputBackground,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  height: 48,
+                },
+                textInput: {
+                  backgroundColor: 'transparent',
+                  color: dynamicStyles.textColor,
+                  fontSize: 16,
+                  height: 48,
+                },
+                listView: {
+                  backgroundColor: dynamicStyles.backgroundColor,
+                  borderRadius: 12,
+                  marginTop: 8,
+                  elevation: 3,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 2 },
+                },
+                row: {
+                  backgroundColor: dynamicStyles.cardBackground,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                },
+                description: {
+                  color: dynamicStyles.textColor,
+                  fontSize: 14,
+                },
+                predefinedPlacesDescription: {
+                  color: dynamicStyles.mutedText,
+                },
+              }}
+              renderLeftButton={() => (
+                <View style={styles.placesSearchIcon}>
+                  <Icon name="search" size={20} color={dynamicStyles.mutedText} />
+                </View>
+              )}
+              renderRightButton={() => (
+                <TouchableOpacity
+                  style={styles.closePlacesSearch}
+                  onPress={() => {
+                    setShowPlacesSearch(false);
+                    setSearchResults([]);
+                  }}
+                >
+                  <Icon name="x" size={20} color={dynamicStyles.mutedText} />
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
       </View>
 
       {/* Results Count */}
       <View style={styles.resultsCount}>
         <Text style={[styles.resultsText, { color: dynamicStyles.mutedText }]}>
-          {filteredLocations.length} location{filteredLocations.length !== 1 ? 's' : ''} found
+          {allDisplayLocations.length} location{allDisplayLocations.length !== 1 ? 's' : ''} found
+          {searchResults.length > 0 && (
+            <Text style={{ color: dynamicStyles.primaryColor }}>
+              {' '}({searchResults.length} from search)
+            </Text>
+          )}
         </Text>
       </View>
 
@@ -287,26 +543,31 @@ const LocationsScreen = () => {
         <MapView
           ref={mapRef}
           style={styles.map}
-          initialRegion={{
-            latitude: 5.6037,
-            longitude: -0.187,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
+          region={mapRegion}
+          onRegionChangeComplete={setMapRegion}
         >
-          {filteredLocations.map((location) => (
+          {allDisplayLocations.map((location) => (
             <Marker
               key={location.id}
               coordinate={{ latitude: location.lat, longitude: location.lng }}
               title={location.name}
               description={location.status}
               onPress={() => setSelectedLocation(location)}
+              pinColor={location.isSearchResult ? '#ff6b6b' : '#197ce5'}
             >
               <Callout>
                 <View style={styles.calloutContainer}>
                   <Text style={styles.calloutTitle}>{location.name}</Text>
                   <Text style={styles.calloutStatus}>{location.status}</Text>
                   <Text style={styles.calloutAddress}>{location.address}</Text>
+                  {location.isSearchResult && (
+                    <TouchableOpacity
+                      style={styles.addLocationButton}
+                      onPress={() => handleAddSearchResult(location)}
+                    >
+                      <Text style={styles.addLocationButtonText}>Add to My Locations</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </Callout>
             </Marker>
@@ -315,10 +576,42 @@ const LocationsScreen = () => {
       </View>
 
       {/* Locations List */}
-      <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
-        {filteredLocations.map(renderLocationCard)}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={dynamicStyles.primaryColor} />
+          <Text style={[styles.loadingText, { color: dynamicStyles.mutedText }]}>
+            Loading locations...
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
+          {allDisplayLocations.length > 0 ? (
+            allDisplayLocations.map((location) => 
+              location.isSearchResult ? renderSearchResultCard(location) : renderLocationCard(location)
+            )
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Icon name="map-pin" size={64} color={dynamicStyles.mutedText} />
+              <Text style={[styles.emptyText, { color: dynamicStyles.textColor }]}>
+                No locations found
+              </Text>
+              <Text style={[styles.emptySubtext, { color: dynamicStyles.mutedText }]}>
+                {searchText ? 'Try adjusting your search terms' : 'Add your first location to get started'}
+              </Text>
+              {!searchText && (
+                <TouchableOpacity
+                  style={[styles.addFirstLocationButton, { backgroundColor: dynamicStyles.primaryColor }]}
+                  onPress={() => navigation.navigate('AddLocation')}
+                >
+                  <Icon name="plus" size={20} color="#ffffff" />
+                  <Text style={styles.addFirstLocationButtonText}>Add Location</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+      )}
 
       {/* Footer Navigation */}
       <View style={[styles.footer, { backgroundColor: dynamicStyles.backgroundColor, borderTopColor: dynamicStyles.borderColor }]}>
@@ -337,27 +630,6 @@ const LocationsScreen = () => {
           <Text style={[styles.footerButtonText, styles.footerButtonTextActive, { color: dynamicStyles.primaryColor }]}>
             Locations
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate("Alerts")}
-        >
-          <Icon name="bell" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Alerts</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate("Education")}
-        >
-          <Icon name="book-open" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Education</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.footerButton}
-          onPress={() => navigation.navigate("Forum")}
-        >
-          <Icon name="users" size={24} color={dynamicStyles.mutedText} />
-          <Text style={[styles.footerButtonText, { color: dynamicStyles.mutedText }]}>Forum</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -529,6 +801,50 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 16,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  addFirstLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  addFirstLocationButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   footer: {
     flexDirection: "row",
     borderTopWidth: 1,
@@ -548,6 +864,46 @@ const styles = StyleSheet.create({
   footerButtonActive: {},
   footerButtonTextActive: {
     fontWeight: "700",
+  },
+  searchToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  placesSearchButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placesSearchContainer: {
+    flex: 1,
+  },
+  placesSearchIcon: {
+    paddingLeft: 12,
+    paddingRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closePlacesSearch: {
+    paddingRight: 12,
+    paddingLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addLocationButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  addLocationButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
