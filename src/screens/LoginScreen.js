@@ -40,7 +40,7 @@ export default function LoginScreen() {
 
   const navigation = useNavigation();
   const { login } = useAuth();
-  const { theme, getThemeColors } = useTheme();
+  const { theme } = useTheme();
 
   // Google OAuth configuration using the new API
   const redirectUri = makeRedirectUri({
@@ -78,29 +78,45 @@ export default function LoginScreen() {
   }, [response]);
 
   // Theme-aware dynamic styles
-  const dynamicStyles = getThemeColors();
+  const dynamicStyles = {
+    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
+    textColor: theme === 'dark' ? '#ffffff' : '#121417',
+    mutedText: theme === 'dark' ? '#a0a0a0' : '#677583',
+    borderColor: theme === 'dark' ? '#404040' : '#e0e6ed',
+    inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
+    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
+    primaryColor: '#197ce5',
+    errorColor: '#dc3545',
+    successColor: '#28a745',
+  };
 
-  // Google Forms-style validation - validates on blur/focus change
+  // Real-time form validation
+  useEffect(() => {
+    validateForm();
+  }, [form, hasAttemptedSubmit]);
+
   const validateForm = () => {
     const newErrors = {};
     
-    // Email validation - Google Forms style
+    // Email validation
     if (!form.email.trim()) {
-      newErrors.email = "This field is required";
+      newErrors.email = "Email is required";
     } else if (!isValidEmail(form.email)) {
-      newErrors.email = "Enter a valid email";
+      newErrors.email = "Please enter a valid email address";
     }
     
-    // Password validation - Google Forms style
+    // Password validation
     if (!form.password.trim()) {
-      newErrors.password = "This field is required";
+      newErrors.password = "Password is required";
     } else if (form.password.length < 8) {
-      newErrors.password = "Use 8 or more characters";
+      newErrors.password = "Password must be at least 8 characters";
     }
     
-    setErrors(newErrors);
+    // Only show errors if user has attempted to submit
+    if (hasAttemptedSubmit) {
+      setErrors(newErrors);
+    }
     setIsFormValid(Object.keys(newErrors).length === 0 && form.email.trim() !== "" && form.password.trim() !== "");
-    return Object.keys(newErrors).length === 0;
   };
 
   const isValidEmail = (email) => {
@@ -110,56 +126,31 @@ export default function LoginScreen() {
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
-    // Google Forms style: Clear error when user starts typing
-    if (errors[field]) {
+    // Clear error when user starts typing (only if they've attempted to submit)
+    if (hasAttemptedSubmit && errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
 
-  // Google Forms style: Validate on blur (when field loses focus)
-  const handleBlur = (field) => {
-    const newErrors = { ...errors };
-    
-    if (field === 'email') {
-      if (!form.email.trim()) {
-        newErrors.email = "This field is required";
-      } else if (!isValidEmail(form.email)) {
-        newErrors.email = "Enter a valid email";
-      } else {
-        delete newErrors.email;
-      }
-    }
-    
-    if (field === 'password') {
-      if (!form.password.trim()) {
-        newErrors.password = "This field is required";
-      } else if (form.password.length < 8) {
-        newErrors.password = "Use 8 or more characters";
-      } else {
-        delete newErrors.password;
-      }
-    }
-    
-    setErrors(newErrors);
-    setIsFormValid(Object.keys(newErrors).length === 0 && form.email.trim() !== "" && form.password.trim() !== "");
-  };
-
   const handleLogin = async () => {
-    // Google Forms style: Validate all fields on submit
-    if (!validateForm()) {
+    // Mark that user has attempted to submit
+    setHasAttemptedSubmit(true);
+    
+    // Force validation to show errors
+    validateForm();
+    
+    if (!isFormValid) {
+      Alert.alert("Validation Error", "Please fix the errors in the form before proceeding.");
       return;
     }
 
     setLoading(true);
     
     try {
-      const success = await login({ email: form.email, password: form.password });
+      const success = await login(form.email, form.password);
       if (success) {
+        // Login successful - navigation will be handled by AuthContext
         console.log("Login successful");
-        // Navigate to Home immediately after successful login
-        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
-        // Fallback navigate to ensure transition in all cases
-        setTimeout(() => navigation.navigate("Home"), 0);
       } else {
         Alert.alert("Login Failed", "Invalid email or password. Please try again.");
       }
@@ -280,14 +271,15 @@ export default function LoginScreen() {
     navigation.navigate("GetStarted");
   };
 
-  // Google Forms style: Minimal styling changes
   const getInputBorderColor = (field) => {
     if (errors[field]) return dynamicStyles.errorColor;
+    if (form[field].trim()) return dynamicStyles.successColor;
     return dynamicStyles.borderColor;
   };
 
   const getInputIconColor = (field) => {
     if (errors[field]) return dynamicStyles.errorColor;
+    if (form[field].trim()) return dynamicStyles.successColor;
     return dynamicStyles.mutedText;
   };
 
@@ -339,7 +331,6 @@ export default function LoginScreen() {
                   ]}
                   value={form.email}
                   onChangeText={(value) => handleChange("email", value)}
-                  onBlur={() => handleBlur("email")}
                   placeholder="Enter your email address"
                   placeholderTextColor={dynamicStyles.mutedText}
                   keyboardType="email-address"
@@ -347,6 +338,9 @@ export default function LoginScreen() {
                   autoCorrect={false}
                   editable={!loading}
                 />
+                {form.email.trim() && !errors.email && (
+                  <Icon name="check-circle" size={20} color={dynamicStyles.successColor} />
+                )}
               </View>
               {errors.email && (
                 <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
@@ -381,7 +375,6 @@ export default function LoginScreen() {
                   ]}
                   value={form.password}
                   onChangeText={(value) => handleChange("password", value)}
-                  onBlur={() => handleBlur("password")}
                   placeholder="Enter your password"
                   placeholderTextColor={dynamicStyles.mutedText}
                   secureTextEntry={!showPassword}
@@ -399,6 +392,9 @@ export default function LoginScreen() {
                     color={dynamicStyles.mutedText} 
                   />
                 </TouchableOpacity>
+                {form.password.trim() && !errors.password && (
+                  <Icon name="check-circle" size={20} color={dynamicStyles.successColor} />
+                )}
               </View>
               {errors.password && (
                 <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
