@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
@@ -11,8 +10,7 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
-  Platform,
-  ScrollView
+  Platform
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -22,7 +20,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import KeyboardAvoidingWrapper from '../components/KeyboardAvoidingWrapper';
-import { reportsStorage } from '../utils/reportsStorage';
 
 const { width } = Dimensions.get('window');
 
@@ -63,11 +60,11 @@ export const ReportformScreen = () => {
     'Other'
   ];
 
-  const getSeverityLevels = (dynamicStyles) => [
-    { key: 'low', label: 'Low', color: dynamicStyles.successColor, icon: 'alert-circle' },
-    { key: 'medium', label: 'Medium', color: dynamicStyles.warningColor, icon: 'alert-triangle' },
-    { key: 'high', label: 'High', color: dynamicStyles.orangeColor, icon: 'alert-octagon' },
-    { key: 'critical', label: 'Critical', color: dynamicStyles.dangerColor, icon: 'alert-octagon' }
+  const severityLevels = [
+    { key: 'low', label: 'Low', color: '#28a745', icon: 'alert-circle' },
+    { key: 'medium', label: 'Medium', color: '#ffc107', icon: 'alert-triangle' },
+    { key: 'high', label: 'High', color: '#fd7e14', icon: 'alert-octagon' },
+    { key: 'critical', label: 'Critical', color: '#dc3545', icon: 'alert-octagon' }
   ];
 
   // Handle scanned barcode input
@@ -128,13 +125,8 @@ export const ReportformScreen = () => {
     successColor: '#28a745',
     warningColor: '#ffc107',
     dangerColor: '#dc3545',
-    orangeColor: '#fd7e14',
-    primaryColor: '#197ce5',
-    whiteColor: '#ffffff',
-    blackColor: '#000'
+    primaryColor: '#197ce5'
   };
-
-  const severityLevels = getSeverityLevels(dynamicStyles);
 
   const handleBack = () => navigation.goBack();
 
@@ -186,18 +178,18 @@ export const ReportformScreen = () => {
     setIsLoading(true);
 
     try {
-      // Create report data
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       const reportData = {
         ...formData,
         attachedImages,
-        userId: formData.reportAnonymously ? 'anonymous' : (user?.id || 'user123'),
+        userId: formData.reportAnonymously ? null : user?.id,
         timestamp: new Date().toISOString(),
         status: 'pending'
       };
 
-      // Save report to storage
-      const savedReport = await reportsStorage.saveReport(reportData);
-      console.log('Report Saved:', savedReport);
+      console.log('Report Submitted:', reportData);
       
       Alert.alert(
         'Success!', 
@@ -205,7 +197,7 @@ export const ReportformScreen = () => {
         [
           { 
             text: 'View My Reports', 
-            onPress: () => navigation.navigate('Report', { user })
+            onPress: () => navigation.navigate('Reported', { user })
           },
           { 
             text: 'Submit Another', 
@@ -259,35 +251,48 @@ export const ReportformScreen = () => {
 
   const handleScanBarcode = () => {
     try {
-      // Check if we're on web platform
-      if (Platform.OS === 'web') {
-        Alert.alert(
-          'Barcode Scanner Not Available',
-          'Barcode scanning is not available on web. Please use the manual entry option or switch to a mobile device.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      // Navigate directly to manual barcode scanner (no camera dependencies)
-      navigation.navigate('ManualBarcodeScannerScreen');
+      // Check if camera permission is available
+      navigation.navigate('BarcodeScannerScreen', { 
+        returnTo: 'ReportForm',
+        expectedData: {
+          medicationName: 'string',
+          expirationDate: 'string',
+          batchNumber: 'string',
+          manufacturer: 'string',
+          category: 'string',
+          storeName: 'string'
+        }
+      });
     } catch (error) {
       console.error('Error navigating to barcode scanner:', error);
-      Alert.alert(
-        'Navigation Error', 
-        'Failed to open barcode scanner. Please try again or use manual entry.',
-        [
-          { text: 'Try Again', onPress: handleScanBarcode },
-          { text: 'Manual Entry', onPress: handleManualBarcodeInput },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
+      Alert.alert('Error', 'Failed to open barcode scanner. Please try again.');
     }
   };
 
   const handleManualBarcodeInput = () => {
-    // Navigate to the manual barcode scanner screen
-    navigation.navigate('ManualBarcodeScannerScreen');
+    Alert.prompt(
+      'Manual Barcode Entry',
+      'Enter the barcode data manually:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Enter', 
+          onPress: (barcodeData) => {
+            if (barcodeData && barcodeData.trim()) {
+              try {
+                // Try to parse as JSON first
+                const parsed = JSON.parse(barcodeData);
+                handleScannedData(parsed);
+              } catch (e) {
+                // If not JSON, treat as simple medication name
+                handleScannedData({ medicationName: barcodeData.trim() });
+              }
+            }
+          }
+        }
+      ],
+      'plain-text'
+    );
   };
 
   const handleScannedData = (scannedData) => {
@@ -299,64 +304,35 @@ export const ReportformScreen = () => {
       return;
     }
 
-    // Ensure we have at least a medication name
-    if (!scannedData.medicationName && !scannedData.rawData) {
-      Alert.alert('Invalid Data', 'No medication information found in the scanned data.');
-      return;
-    }
-
     // Auto-fill form with scanned data
     const updatedFormData = { ...formData };
-    let fieldsUpdated = 0;
     
     if (scannedData.medicationName) {
       updatedFormData.medicationName = scannedData.medicationName;
-      fieldsUpdated++;
     }
     if (scannedData.expirationDate) {
       updatedFormData.expirationDate = scannedData.expirationDate;
-      fieldsUpdated++;
     }
     if (scannedData.batchNumber) {
       updatedFormData.batchNumber = scannedData.batchNumber;
-      fieldsUpdated++;
     }
     if (scannedData.manufacturer) {
       updatedFormData.manufacturer = scannedData.manufacturer;
-      fieldsUpdated++;
     }
     if (scannedData.category) {
       updatedFormData.category = scannedData.category;
-      fieldsUpdated++;
     }
     if (scannedData.storeName) {
       updatedFormData.storeName = scannedData.storeName;
-      fieldsUpdated++;
     }
     
     setFormData(updatedFormData);
     
-    // Show success message with more details
-    const successMessage = [
-      `Medication: ${scannedData.medicationName || 'Not provided'}`,
-      scannedData.batchNumber ? `Batch: ${scannedData.batchNumber}` : null,
-      scannedData.manufacturer ? `Manufacturer: ${scannedData.manufacturer}` : null,
-      scannedData.barcodeType ? `Type: ${scannedData.barcodeType.toUpperCase()}` : null,
-      `Fields updated: ${fieldsUpdated}`
-    ].filter(Boolean).join('\n');
-    
+    // Show success message
     Alert.alert(
       'Data Processed Successfully!',
-      successMessage,
-      [
-        { 
-          text: 'OK',
-          onPress: () => {
-            // Clear any existing errors when data is successfully processed
-            setErrors({});
-          }
-        }
-      ]
+      `Medication: ${scannedData.medicationName || 'Unknown'}\nBatch: ${scannedData.batchNumber || 'Unknown'}\nManufacturer: ${scannedData.manufacturer || 'Unknown'}`,
+      [{ text: 'OK' }]
     );
   };
 
@@ -453,7 +429,7 @@ export const ReportformScreen = () => {
               style={styles.removeImageButton}
               onPress={() => removeImage(image.id)}
             >
-              <Icon name="x" size={16} color={dynamicStyles.whiteColor} />
+              <Icon name="x" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
@@ -546,7 +522,7 @@ export const ReportformScreen = () => {
                 styles.categoryChipText,
                 { 
                   color: formData.category === category 
-                    ? dynamicStyles.whiteColor 
+                    ? '#fff' 
                     : dynamicStyles.textColor 
                 }
               ]}>
@@ -580,13 +556,13 @@ export const ReportformScreen = () => {
               <Icon 
                 name={level.icon} 
                 size={16} 
-                color={formData.severity === level.key ? dynamicStyles.whiteColor : level.color} 
+                color={formData.severity === level.key ? '#fff' : level.color} 
               />
               <Text style={[
                 styles.severityChipText,
                 { 
                   color: formData.severity === level.key 
-                    ? dynamicStyles.whiteColor 
+                    ? '#fff' 
                     : dynamicStyles.textColor 
                 }
               ]}>
@@ -783,8 +759,8 @@ export const ReportformScreen = () => {
           ]} 
           onPress={handleScanBarcode}
         >
-          <Icon name="camera" size={20} color={dynamicStyles.whiteColor} />
-          <Text style={[styles.barcodeButtonText, { color: dynamicStyles.whiteColor }]}>
+          <Icon name="camera" size={20} color="#ffffff" />
+          <Text style={[styles.barcodeButtonText, { color: "#ffffff" }]}>
             Scan Barcode/QR Code
           </Text>
         </TouchableOpacity>
@@ -811,15 +787,6 @@ export const ReportformScreen = () => {
               <Text style={[styles.scannedDataTitle, { color: dynamicStyles.textColor }]}>
                 Scanned Data
               </Text>
-              <TouchableOpacity 
-                style={styles.clearScannedDataButton}
-                onPress={() => {
-                  // Clear the scanned data by navigating back to the same screen without params
-                  navigation.replace('ReportForm');
-                }}
-              >
-                <Icon name="x" size={16} color={dynamicStyles.mutedText} />
-              </TouchableOpacity>
             </View>
             <View style={styles.scannedDataContent}>
               {route.params.scannedMedication.medicationName && (
@@ -835,16 +802,6 @@ export const ReportformScreen = () => {
               {route.params.scannedMedication.manufacturer && (
                 <Text style={[styles.scannedDataText, { color: dynamicStyles.textColor }]}>
                   <Text style={{ fontWeight: '600' }}>Manufacturer:</Text> {route.params.scannedMedication.manufacturer}
-                </Text>
-              )}
-              {route.params.scannedMedication.barcodeNumber && (
-                <Text style={[styles.scannedDataText, { color: dynamicStyles.textColor }]}>
-                  <Text style={{ fontWeight: '600' }}>Barcode:</Text> {route.params.scannedMedication.barcodeNumber}
-                </Text>
-              )}
-              {route.params.scannedMedication.barcodeType && (
-                <Text style={[styles.scannedDataText, { color: dynamicStyles.textColor }]}>
-                  <Text style={{ fontWeight: '600' }}>Type:</Text> {route.params.scannedMedication.barcodeType.toUpperCase()}
                 </Text>
               )}
               {route.params.scannedMedication.scannedAt && (
@@ -879,7 +836,7 @@ export const ReportformScreen = () => {
           value={formData.reportAnonymously}
           onValueChange={(value) => handleInputChange('reportAnonymously', value)}
           trackColor={{ false: dynamicStyles.borderColor, true: dynamicStyles.primaryColor }}
-          thumbColor={dynamicStyles.whiteColor}
+          thumbColor="#ffffff"
         />
       </View>
 
@@ -906,7 +863,7 @@ export const ReportformScreen = () => {
           disabled={isLoading || formProgress < 100}
         >
           {isLoading ? (
-            <ActivityIndicator color={dynamicStyles.whiteColor} />
+            <ActivityIndicator color="#ffffff" />
           ) : (
             <Text style={styles.submitButtonText}>
               Submit Report
@@ -1235,19 +1192,12 @@ const styles = StyleSheet.create({
   scannedDataHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 12,
   },
   scannedDataTitle: {
     marginLeft: 8,
     fontSize: 16,
     fontWeight: '600',
-    flex: 1,
-  },
-  clearScannedDataButton: {
-    padding: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   scannedDataContent: {
     marginTop: 8,

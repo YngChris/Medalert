@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider } from "./src/context/ThemeContext";
 import Toast from "react-native-toast-message";
 import KeyboardAvoidingWrapper from "./src/components/KeyboardAvoidingWrapper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
@@ -15,50 +14,23 @@ import { ReportformScreen } from "./src/screens/ReportformScreen";
 import { ReportedScreen } from "./src/screens/ReportedScreen";
 import { GetStartedScreen } from "./src/screens/GetStartedScreen";
 import LocationsScreen from "./src/screens/LocationsScreen";
+import { AlertsScreen } from "./src/screens/AlertsScreen";
+import { EducationScreen } from "./src/screens/EducationScreen";
+import { ForumScreen } from "./src/screens/ForumScreen";
 import { MyReportsScreen } from "./src/screens/MyReportsScreen";
 import { RecycleBinScreen } from "./src/screens/RecycleBinScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
+import ReplyScreen from "./src/screens/ReplyScreen";
+import DiscussionScreen from "./src/screens/DiscussionsScreen";
+import { ContentDetailScreen } from "./src/screens/ContentScreen";
 import BarcodeScannerScreen from "./src/screens/BarcodeScannerScreen";
-import SimpleBarcodeScannerScreen from "./src/screens/SimpleBarcodeScannerScreen";
-import ManualBarcodeScannerScreen from "./src/screens/ManualBarcodeScannerScreen";
 import { ReportDetailScreen } from "./src/screens/ReportDetailScreen";
 import { EditMyReportsScreen } from "./src/screens/EditMyReportsScreen";
-import AddLocationScreen from "./src/screens/AddLocationScreen";
 
 const Stack = createNativeStackNavigator();
-const NAV_STATE_KEY = "navState_v1";
 
 export default function App() {
-  const [initialNavState, setInitialNavState] = useState();
-  const [navReady, setNavReady] = useState(false);
-
-  // Load persisted navigation state early
-  useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(NAV_STATE_KEY);
-        if (saved) {
-          setInitialNavState(JSON.parse(saved));
-        }
-      } catch (e) {
-        // ignore parse/storage errors
-      } finally {
-        setNavReady(true);
-      }
-    })();
-  }, []);
-
-  const handleStateChange = useCallback(async (state) => {
-    try {
-      await AsyncStorage.setItem(NAV_STATE_KEY, JSON.stringify(state));
-    } catch (_) {}
-  }, []);
-
-  if (!navReady) {
-    return null;
-  }
-
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -67,7 +39,7 @@ export default function App() {
           keyboardVerticalOffset={0}
           enableOnAndroid={true}
         >
-          <NavigationContainer initialState={initialNavState} onStateChange={handleStateChange}>
+          <NavigationContainer>
             <Stack.Navigator initialRouteName="GetStarted">
                 <Stack.Screen
                   name="GetStarted"
@@ -120,6 +92,21 @@ export default function App() {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen
+                  name="Alerts"
+                  component={AlertsScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Education"
+                  component={EducationScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="Forum"
+                  component={ForumScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
                   name="RecycleBin"
                   component={RecycleBinScreen}
                   options={{ headerShown: false }}
@@ -131,17 +118,19 @@ export default function App() {
                 />
                 <Stack.Screen name="EditProfile" component={EditProfileScreen} />
                 <Stack.Screen
+                  name="Reply"
+                  component={ReplyScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen name="Discussion" component={DiscussionScreen} />
+                <Stack.Screen
+                  name="ContentDetail"
+                  component={ContentDetailScreen}
+                  options={{ title: "Details" }}
+                />
+                <Stack.Screen
                   name="BarcodeScannerScreen"
                   component={BarcodeScannerScreen}
-                />
-                <Stack.Screen
-                  name="SimpleBarcodeScannerScreen"
-                  component={SimpleBarcodeScannerScreen}
-                />
-                <Stack.Screen
-                  name="ManualBarcodeScannerScreen"
-                  component={ManualBarcodeScannerScreen}
-                  options={{ headerShown: false }}
                 />
                 <Stack.Screen
                   name="ReportDetail"
@@ -151,11 +140,6 @@ export default function App() {
                 <Stack.Screen
                   name="EditMyReports"
                   component={EditMyReportsScreen}
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="AddLocation"
-                  component={AddLocationScreen}
                   options={{ headerShown: false }}
                 />
             </Stack.Navigator>

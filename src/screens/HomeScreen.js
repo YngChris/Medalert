@@ -104,6 +104,59 @@ const HomeScreen = ({ route }) => {
           <Icon name="chevron-right" size={20} color={dynamicStyles.mutedText} />
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={[styles.featureCard, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]} 
+          onPress={() => navigateTo('Alerts')}
+        >
+          <View style={[styles.cardIcon, { backgroundColor: '#f59e0b15' }]}>
+            <Icon name="bell" size={28} color="#f59e0b" />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>
+              Safety Alerts
+            </Text>
+            <Text style={[styles.cardText, { color: dynamicStyles.mutedText }]}>
+              Stay updated on drug recalls
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={dynamicStyles.mutedText} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.featureCard, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]} 
+          onPress={() => navigateTo('Education')}
+        >
+          <View style={[styles.cardIcon, { backgroundColor: '#10b98115' }]}>
+            <Icon name="book-open" size={28} color="#10b981" />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>
+              Learn & Educate
+            </Text>
+            <Text style={[styles.cardText, { color: dynamicStyles.mutedText }]}>
+              Access drug safety resources
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={dynamicStyles.mutedText} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.featureCard, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]} 
+          onPress={() => navigateTo('Forum')}
+        >
+          <View style={[styles.cardIcon, { backgroundColor: '#06b6d415' }]}>
+            <Icon name="users" size={28} color="#06b6d4" />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>
+              Community Forum
+            </Text>
+            <Text style={[styles.cardText, { color: dynamicStyles.mutedText }]}>
+              Connect with other users
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={20} color={dynamicStyles.mutedText} />
+        </TouchableOpacity>
 
 
       </View>
