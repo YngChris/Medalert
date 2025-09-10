@@ -11,12 +11,13 @@ import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '../context/ThemeContext';
+import { reportsStorage } from '../utils/reportsStorage';
 
 export const RecycleBinScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { theme } = useTheme();
-  const { deletedReports: initialDeletedReports = [], restoreReport, setDeletedReports } = route.params || {};
+  const { deletedReports: initialDeletedReports = [], onRestore } = route.params || {};
 
   const [deletedReports, setLocalDeletedReports] = useState(initialDeletedReports);
 
@@ -29,31 +30,49 @@ export const RecycleBinScreen = () => {
     cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
     inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
     primaryColor: '#197ce5',
+    dangerColor: '#d32f2f',
+    blackColor: '#000',
   };
 
   useEffect(() => {
-    // Sync local state with main state
-    setDeletedReports?.(deletedReports);
-  }, [deletedReports]);
+    // Load deleted reports from storage when component mounts
+    const loadDeletedReports = async () => {
+      try {
+        const deleted = await reportsStorage.getDeletedReports();
+        setLocalDeletedReports(deleted);
+      } catch (error) {
+        console.error('Error loading deleted reports:', error);
+      }
+    };
+    
+    loadDeletedReports();
+  }, []);
 
-  const handleRestore = (report) => {
-    restoreReport?.(report);
+  const handleRestore = async (report) => {
+    try {
+      // Restore report to main storage
+      await reportsStorage.restoreReport(report);
+      
+      // Remove from deleted reports storage
+      await reportsStorage.removeDeletedReport(report.id);
 
-    // Remove it from local state to reflect change instantly
-    setLocalDeletedReports((prev) =>
-      prev.filter(
-        (r) => r.medication !== report.medication || r.date !== report.date
-      )
-    );
+      // Remove it from local state to reflect change instantly
+      setLocalDeletedReports((prev) =>
+        prev.filter((r) => r.id !== report.id)
+      );
 
-    Toast.show({
-      type: 'success',
-      text1: 'Restored',
-      text2: `${report.medication} has been restored.`,
-    });
+      Toast.show({
+        type: 'success',
+        text1: 'Restored',
+        text2: `${report.medicationName || report.medication} has been restored to My Reports.`,
+      });
+    } catch (error) {
+      console.error('Error restoring report:', error);
+      Alert.alert('Error', 'Failed to restore report. Please try again.');
+    }
   };
 
-  const handleEmptyBin = () => {
+  const handleEmptyBin = async () => {
     Alert.alert(
       'Empty Recycle Bin',
       'Are you sure you want to permanently delete all reports?',
@@ -62,9 +81,19 @@ export const RecycleBinScreen = () => {
         {
           text: 'Delete All',
           style: 'destructive',
-          onPress: () => {
-            setLocalDeletedReports([]);
-            setDeletedReports?.([]);
+          onPress: async () => {
+            try {
+              await reportsStorage.clearDeletedReports();
+              setLocalDeletedReports([]);
+              Toast.show({
+                type: 'success',
+                text1: 'Bin Emptied',
+                text2: 'All reports have been permanently deleted.',
+              });
+            } catch (error) {
+              console.error('Error emptying bin:', error);
+              Alert.alert('Error', 'Failed to empty bin. Please try again.');
+            }
           },
         },
       ]
@@ -80,7 +109,7 @@ export const RecycleBinScreen = () => {
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: dynamicStyles.textColor }]}>Recycle Bin</Text>
           <TouchableOpacity style={styles.iconButton} onPress={handleEmptyBin}>
-            <Icon name="trash-2" size={22} color="#d32f2f" />
+            <Icon name="trash-2" size={22} color={dynamicStyles.dangerColor} />
           </TouchableOpacity>
         </View>
 
@@ -95,22 +124,25 @@ export const RecycleBinScreen = () => {
         ) : (
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {deletedReports.map((report, index) => (
-              <View key={index} style={[styles.reportItem, { 
+              <View key={report.id || index} style={[styles.reportItem, { 
                 backgroundColor: dynamicStyles.cardBackground,
                 borderColor: dynamicStyles.borderColor 
               }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.titleText, { color: dynamicStyles.textColor }]}>
-                    Medication: {report.medication}
+                    {report.medicationName || report.medication}
                   </Text>
                   <Text style={[styles.detailText, { color: dynamicStyles.mutedText }]}>
-                    Description: {report.description}
+                    {report.description}
                   </Text>
                   <Text style={[styles.detailText, { color: dynamicStyles.mutedText }]}>
-                    Location: {report.location}
+                    {report.location}
+                  </Text>
+                  <Text style={[styles.detailText, { color: dynamicStyles.mutedText }]}>
+                    Store: {report.storeName}
                   </Text>
                   <Text style={[styles.dateText, { color: dynamicStyles.mutedText }]}>
-                    Date: {report.date}
+                    {new Date(report.timestamp).toLocaleDateString()}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => handleRestore(report)} style={styles.restoreBtn}>

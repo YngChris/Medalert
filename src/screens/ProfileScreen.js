@@ -22,7 +22,6 @@ const ProfileScreen = ({ navigation, route }) => {
     email: '',
     phoneNumber: '',
     location: '',
-    signupDate: '',
     profileImage: null,
   });
 
@@ -32,17 +31,20 @@ const ProfileScreen = ({ navigation, route }) => {
         console.log("🔄 Loading user data...");
         console.log("Route params:", route.params);
         console.log("Auth user:", authUser);
+        console.log("Auth user phoneNumber:", authUser?.phoneNumber);
         console.log("Is authenticated:", isAuthenticated);
         
         // Priority 1: Navigation params (for new registrations/updates)
         if (route.params?.user) {
           console.log("📱 Using user data from navigation params");
+          console.log("📱 Navigation user phoneNumber:", route.params.user.phoneNumber);
           setUser(route.params.user);
           await AsyncStorage.setItem('userData', JSON.stringify(route.params.user));
         } 
         // Priority 2: Authenticated user from AuthContext
         else if (authUser && isAuthenticated) {
           console.log("🔐 Using authenticated user data from AuthContext");
+          console.log("🔐 AuthContext user phoneNumber:", authUser.phoneNumber);
           setUser(authUser);
           await AsyncStorage.setItem('userData', JSON.stringify(authUser));
         } 
@@ -53,6 +55,7 @@ const ProfileScreen = ({ navigation, route }) => {
           if (savedUserData) {
             const parsedUser = JSON.parse(savedUserData);
             console.log("📖 Parsed user data from storage:", parsedUser);
+            console.log("📖 Parsed user phoneNumber:", parsedUser.phoneNumber);
             setUser(parsedUser);
           } else {
             console.log("❌ No user data found in storage");
@@ -131,7 +134,41 @@ const ProfileScreen = ({ navigation, route }) => {
   };
 
   const handleEditProfile = () => {
-    navigation.navigate('EditProfile', { user: { ...user, profileImage: user.profileImage } });
+    console.log("🔄 Attempting to navigate to EditProfile");
+    console.log("📱 Current user data:", user);
+    console.log("📱 User data being passed:", { ...user, profileImage: user.profileImage });
+    
+    // Check if user data is available
+    if (!user || !user.email) {
+      Alert.alert(
+        'Profile Not Loaded',
+        'Please wait for your profile to load completely before editing.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    try {
+      navigation.navigate('EditProfile', { user: { ...user, profileImage: user.profileImage } });
+      console.log("✅ Navigation to EditProfile initiated");
+    } catch (error) {
+      console.error("❌ Navigation error:", error);
+      Alert.alert(
+        'Navigation Error',
+        'Unable to open edit profile screen. Please try again.',
+        [
+          { text: 'Cancel' },
+          { 
+            text: 'Retry', 
+            onPress: () => {
+              setTimeout(() => {
+                navigation.navigate('EditProfile', { user: { ...user, profileImage: user.profileImage } });
+              }, 500);
+            }
+          }
+        ]
+      );
+    }
   };
 
 
@@ -210,20 +247,26 @@ const ProfileScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      <ProfileDetails form={user} editable={false} profileImage={user.profileImage} />
+      <ProfileDetails form={user} editable={false} profileImage={user.profileImage || user.avatar} />
 
-      <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-        <Text style={styles.editButtonText}>Edit Profile</Text>
+      <TouchableOpacity 
+        style={[styles.editButton, { backgroundColor: dynamicStyles.primaryColor }]} 
+        onPress={handleEditProfile}
+        disabled={!user || !user.email}
+      >
+        <Text style={[styles.editButtonText, { color: dynamicStyles.buttonText }]}>
+          {(!user || !user.email) ? 'Loading...' : 'Edit Profile'}
+        </Text>
       </TouchableOpacity>
 
 
 
-      <TouchableOpacity style={styles.homeButton} onPress={() => navigation.navigate('Home', { user: { ...user, profileImage: user.profileImage } })}>
-        <Text style={styles.homeButtonText}>Go to Home</Text>
+      <TouchableOpacity style={[styles.homeButton, { backgroundColor: dynamicStyles.successColor }]} onPress={() => navigation.navigate('Home', { user: { ...user, profileImage: user.profileImage } })}>
+        <Text style={[styles.homeButtonText, { color: dynamicStyles.buttonText }]}>Go to Home</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Log Out</Text>
+      <TouchableOpacity style={[styles.logoutButton, { backgroundColor: dynamicStyles.errorColor }]} onPress={handleLogout}>
+        <Text style={[styles.logoutButtonText, { color: dynamicStyles.buttonText }]}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -234,7 +277,6 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: '#fff',
     flexGrow: 1,
   },
   header: {
@@ -253,7 +295,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#333',
     flex: 1,
     textAlign: 'center',
   },
@@ -270,11 +311,9 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 8,
-    backgroundColor: '#007AFF',
     alignItems: 'center',
   },
   editButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -285,11 +324,9 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 8,
-    backgroundColor: '#28a745',
     alignItems: 'center',
   },
   homeButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -298,11 +335,9 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 8,
-    backgroundColor: '#dc3545',
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

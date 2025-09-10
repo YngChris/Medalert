@@ -99,19 +99,39 @@ const sampleReports = [
   }
 ];
 
-const statusConfig = {
-  pending: { label: 'Pending', color: '#ffc107', icon: 'clock', bgColor: '#fff3cd' },
-  under_review: { label: 'Under Review', color: '#17a2b8', icon: 'search', bgColor: '#d1ecf1' },
-  resolved: { label: 'Resolved', color: '#28a745', icon: 'check-circle', bgColor: '#d4edda' },
-  rejected: { label: 'Rejected', color: '#dc3545', icon: 'x-circle', bgColor: '#f8d7da' }
-};
+const getStatusConfig = (theme) => ({
+  pending: { 
+    label: 'Pending', 
+    color: '#ffc107', 
+    icon: 'clock', 
+    bgColor: theme === 'dark' ? 'rgba(255, 193, 7, 0.2)' : '#fff3cd' 
+  },
+  under_review: { 
+    label: 'Under Review', 
+    color: '#17a2b8', 
+    icon: 'search', 
+    bgColor: theme === 'dark' ? 'rgba(23, 162, 184, 0.2)' : '#d1ecf1' 
+  },
+  resolved: { 
+    label: 'Resolved', 
+    color: '#28a745', 
+    icon: 'check-circle', 
+    bgColor: theme === 'dark' ? 'rgba(40, 167, 69, 0.2)' : '#d4edda' 
+  },
+  rejected: { 
+    label: 'Rejected', 
+    color: '#dc3545', 
+    icon: 'x-circle', 
+    bgColor: theme === 'dark' ? 'rgba(220, 53, 69, 0.2)' : '#f8d7da' 
+  }
+});
 
-const severityConfig = {
+const getSeverityConfig = (theme) => ({
   low: { label: 'Low', color: '#28a745', icon: 'alert-circle' },
   medium: { label: 'Medium', color: '#ffc107', icon: 'alert-triangle' },
   high: { label: 'High', color: '#fd7e14', icon: 'alert-octagon' },
   critical: { label: 'Critical', color: '#dc3545', icon: 'alert-octagon' }
-};
+});
 
 const ReportCard = ({ report, onView, onEdit, onDelete, theme }) => {
   const [imageError, setImageError] = useState(false);
@@ -125,6 +145,8 @@ const ReportCard = ({ report, onView, onEdit, onDelete, theme }) => {
     cardBackground: theme === 'dark' ? '#1a1a1a' : '#ffffff'
   };
 
+  const statusConfig = getStatusConfig(theme);
+  const severityConfig = getSeverityConfig(theme);
   const status = statusConfig[report.status] || statusConfig.pending;
   const severity = severityConfig[report.severity] || severityConfig.medium;
 
@@ -370,8 +392,11 @@ export const ReportedScreen = () => {
   );
 
   const uniqueSeverities = useMemo(() => 
-    [...new Set(reports.map(report => report.status))], [reports]
+    [...new Set(reports.map(report => report.severity))], [reports]
   );
+
+  // Get status config for the main component
+  const statusConfig = useMemo(() => getStatusConfig(theme), [theme]);
 
   useEffect(() => {
     // Handle navigation from ReportFormScreen

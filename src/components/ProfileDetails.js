@@ -15,6 +15,10 @@ const ProfileDetails = ({
   const { getThemeColors } = useTheme();
   const dynamicStyles = getThemeColors();
 
+  // Debug logging
+  console.log("📋 ProfileDetails - form data:", form);
+  console.log("📋 ProfileDetails - phoneNumber:", form?.phoneNumber);
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.imageContainer}>
@@ -160,10 +164,7 @@ const ProfileDetails = ({
           {errors.location && <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>{errors.location}</Text>}
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Signup Date</Text>
-          <Text style={[styles.displayText, { color: dynamicStyles.textColor }]}>{form.signupDate || 'Not provided'}</Text>
-        </View>
+        
       </View>
     </ScrollView>
   );

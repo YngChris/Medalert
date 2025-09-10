@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { Platform } from 'react-native';
 import Icon from "react-native-vector-icons/Feather";
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,48 +33,138 @@ const SignupScreen = ({ navigation }) => {
   const [profileImage, setProfileImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Auto-detect location when component mounts (if permission already granted)
+  useEffect(() => {
+    const checkAndAutoDetectLocation = async () => {
+      try {
+        // Check if location permission is already granted
+        let { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted' && !form.location.trim()) {
+          // Auto-detect without showing alerts
+          setLocationLoading(true);
+          try {
+            let locationData = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced
+            });
+            
+            const { latitude, longitude } = locationData.coords;
+            let reverseGeocode = await Location.reverseGeocodeAsync({
+              latitude,
+              longitude
+            });
+
+            if (reverseGeocode && reverseGeocode.length > 0) {
+              const address = reverseGeocode[0];
+              const locationString = [
+                address.city,
+                address.region,
+                address.country
+              ].filter(Boolean).join(', ');
+
+              setForm(prev => ({
+                ...prev,
+                location: locationString
+              }));
+            }
+          } catch (error) {
+            console.log('Auto-location detection failed:', error.message);
+          } finally {
+            setLocationLoading(false);
+          }
+        }
+      } catch (error) {
+        console.log('Permission check failed:', error.message);
+      }
+    };
+
+    checkAndAutoDetectLocation();
+  }, []);
 
   const handleChange = (field, value) => {
     setForm({ ...form, [field]: value });
-    // Clear error when user starts typing (only if they've attempted to submit)
-    if (hasAttemptedSubmit && errors[field]) {
+    // Google Forms style: Clear error when user starts typing
+    if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
 
+  // Google Forms style: Validate on blur (when field loses focus)
+  const handleBlur = (field) => {
+    const newErrors = { ...errors };
+    
+    if (field === 'firstName') {
+      if (!form.firstName.trim()) {
+        newErrors.firstName = "This field is required";
+      } else {
+        delete newErrors.firstName;
+      }
+    }
+    
+    if (field === 'lastName') {
+      if (!form.lastName.trim()) {
+        newErrors.lastName = "This field is required";
+      } else {
+        delete newErrors.lastName;
+      }
+    }
+    
+    if (field === 'email') {
+      if (!form.email.trim()) {
+        newErrors.email = "This field is required";
+      } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+        newErrors.email = "Enter a valid email";
+      } else {
+        delete newErrors.email;
+      }
+    }
+    
+    if (field === 'password') {
+      if (!form.password.trim()) {
+        newErrors.password = "This field is required";
+      } else if (form.password.length < 8) {
+        newErrors.password = "Use 8 or more characters";
+      } else {
+        delete newErrors.password;
+      }
+    }
+    
+    setErrors(newErrors);
+  };
+
+  // Google Forms style: Validate all fields on form submission
   const validateForm = () => {
     const newErrors = {};
 
     if (!form.firstName.trim()) {
-      newErrors.firstName = "First name is required";
+      newErrors.firstName = "This field is required";
     }
 
     if (!form.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
+      newErrors.lastName = "This field is required";
     }
 
     if (!form.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = "This field is required";
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = "Enter a valid email";
     }
 
     if (!form.password.trim()) {
-      newErrors.password = "Password is required";
+      newErrors.password = "This field is required";
     } else if (form.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = "Use 8 or more characters";
     }
 
-    // Only show errors if user has attempted to submit
-    if (hasAttemptedSubmit) {
-      setErrors(newErrors);
-    }
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Google Forms style: Minimal styling changes  
   const getInputBorderColor = (field) => {
     if (errors[field]) return dynamicStyles.errorColor;
-    if (form[field].trim()) return dynamicStyles.successColor;
     return dynamicStyles.borderColor;
   };
 
@@ -94,13 +186,74 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+  const getCurrentLocation = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not available on web', 'Automatic location detection requires a native device. Please type your location.');
+      return;
+    }
+    try {
+      setLocationLoading(true);
+      
+      // Request permission
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is needed to automatically detect your location.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Get current position
+      let locationData = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+
+      const { latitude, longitude } = locationData.coords;
+
+      // Reverse geocode to get human-readable address
+      let reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude
+      });
+
+      if (reverseGeocode && reverseGeocode.length > 0) {
+        const address = reverseGeocode[0];
+        const locationString = [
+          address.city,
+          address.region,
+          address.country
+        ].filter(Boolean).join(', ');
+
+        setForm(prev => ({
+          ...prev,
+          location: locationString
+        }));
+
+        Alert.alert(
+          'Location Detected',
+          `Your location has been set to: ${locationString}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error('Could not determine location address');
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert(
+        'Location Error',
+        'Unable to detect your location. Please enter it manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
   const onSignUpPress = async () => {
-    // Mark that user has attempted to submit
-    setHasAttemptedSubmit(true);
-    
-    // Enhanced validation
+    // Google Forms style: Validate all fields on submit
     if (!validateForm()) {
-      Alert.alert("Validation Error", "Please fix the errors in the form before proceeding.");
       return;
     }
 
@@ -252,7 +405,7 @@ const SignupScreen = ({ navigation }) => {
             <View style={styles.profileImageWrapper}>
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
               <View style={styles.checkmarkOverlay}>
-                <Icon name="check-circle" size={20} color="#28a745" />
+                <Icon name="check-circle" size={20} color={dynamicStyles.successColor} />
               </View>
             </View>
           ) : (
@@ -277,10 +430,11 @@ const SignupScreen = ({ navigation }) => {
               backgroundColor: dynamicStyles.inputBackground, 
               color: dynamicStyles.textColor,
               borderColor: getInputBorderColor('firstName'),
-              borderWidth: 2
+              borderWidth: 1
             }]}
             value={form.firstName}
             onChangeText={(value) => handleChange("firstName", value)}
+            onBlur={() => handleBlur("firstName")}
             placeholder="Enter your first name"
             placeholderTextColor={dynamicStyles.mutedText}
           />
@@ -298,10 +452,11 @@ const SignupScreen = ({ navigation }) => {
               backgroundColor: dynamicStyles.inputBackground, 
               color: dynamicStyles.textColor,
               borderColor: getInputBorderColor('lastName'),
-              borderWidth: 2
+              borderWidth: 1
             }]}
             value={form.lastName}
             onChangeText={(value) => handleChange("lastName", value)}
+            onBlur={() => handleBlur("lastName")}
             placeholder="Enter your last name"
             placeholderTextColor={dynamicStyles.mutedText}
           />
@@ -319,10 +474,11 @@ const SignupScreen = ({ navigation }) => {
               backgroundColor: dynamicStyles.inputBackground, 
               color: dynamicStyles.textColor,
               borderColor: getInputBorderColor('email'),
-              borderWidth: 2
+              borderWidth: 1
             }]}
             value={form.email}
             onChangeText={(value) => handleChange("email", value)}
+            onBlur={() => handleBlur("email")}
             placeholder="Enter your email"
             placeholderTextColor={dynamicStyles.mutedText}
             keyboardType="email-address"
@@ -337,19 +493,34 @@ const SignupScreen = ({ navigation }) => {
 
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Password *</Text>
-          <TextInput
-            style={[styles.input, { 
-              backgroundColor: dynamicStyles.inputBackground, 
-              color: dynamicStyles.textColor,
-              borderColor: getInputBorderColor('password'),
-              borderWidth: 2
-            }]}
-            value={form.password}
-            onChangeText={(value) => handleChange("password", value)}
-            placeholder="Enter your password"
-            placeholderTextColor={dynamicStyles.mutedText}
-            secureTextEntry
-          />
+          <View style={[styles.passwordInputContainer, { 
+            backgroundColor: dynamicStyles.inputBackground, 
+            borderColor: getInputBorderColor('password'),
+            borderWidth: 1
+          }]}>
+            <TextInput
+              style={[styles.passwordInput, { 
+                color: dynamicStyles.textColor
+              }]}
+              value={form.password}
+              onChangeText={(value) => handleChange("password", value)}
+              onBlur={() => handleBlur("password")}
+              placeholder="Enter your password"
+              placeholderTextColor={dynamicStyles.mutedText}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.passwordToggle}
+              onPress={() => setShowPassword(!showPassword)}
+              disabled={loading}
+            >
+              <Icon 
+                name={showPassword ? "eye-off" : "eye"} 
+                size={20} 
+                color={dynamicStyles.mutedText} 
+              />
+            </TouchableOpacity>
+          </View>
           {errors.password && (
             <Text style={[styles.errorText, { color: dynamicStyles.errorColor }]}>
               {errors.password}
@@ -375,17 +546,36 @@ const SignupScreen = ({ navigation }) => {
 
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Location</Text>
-          <TextInput
-            style={[styles.input, { 
-              backgroundColor: dynamicStyles.inputBackground, 
-              color: dynamicStyles.textColor,
-              borderColor: dynamicStyles.borderColor 
-            }]}
-            value={form.location}
-            onChangeText={(value) => handleChange("location", value)}
-            placeholder="Enter your location"
-            placeholderTextColor={dynamicStyles.mutedText}
-          />
+          <View style={styles.locationInputContainer}>
+            <TextInput
+              style={[styles.locationInput, { 
+                backgroundColor: dynamicStyles.inputBackground, 
+                color: dynamicStyles.textColor,
+                borderColor: dynamicStyles.borderColor 
+              }]}
+              value={form.location}
+              onChangeText={(value) => handleChange("location", value)}
+              placeholder="Enter your location or tap to detect"
+              placeholderTextColor={dynamicStyles.mutedText}
+              editable={!locationLoading}
+            />
+            <TouchableOpacity
+              style={[styles.locationButton, { 
+                backgroundColor: locationLoading ? dynamicStyles.mutedText : dynamicStyles.primaryColor 
+              }]}
+              onPress={getCurrentLocation}
+              disabled={locationLoading}
+            >
+              {locationLoading ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <Icon name="map-pin" size={16} color="#ffffff" />
+              )}
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.locationHint, { color: dynamicStyles.mutedText }]}>
+            Tap the location icon to automatically detect your current location
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.signupButton} onPress={onSignUpPress} disabled={loading}>
@@ -616,6 +806,61 @@ const styles = StyleSheet.create({
   backToIntroText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  locationInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  locationInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    backgroundColor: "#fafafa",
+    color: "#000",
+    marginRight: 8,
+  },
+  locationButton: {
+    backgroundColor: "#007AFF",
+    borderRadius: 8,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  locationHint: {
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 6,
+    color: "#000",
+  },
+  passwordToggle: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
 

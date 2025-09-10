@@ -21,13 +21,16 @@ const EditProfileScreen = ({ navigation, route }) => {
   const { updateProfile } = useAuth();
   const existingUser = route.params?.user;
   const [loading, setLoading] = useState(false);
+
+  console.log("🔄 EditProfileScreen - Screen loaded");
+  console.log("📱 EditProfileScreen - Route params:", route.params);
+  console.log("👤 EditProfileScreen - Existing user:", existingUser);
   const [form, setForm] = useState({
     firstName: existingUser?.firstName || '',
     lastName: existingUser?.lastName || '',
     email: existingUser?.email || '',
     phoneNumber: existingUser?.phoneNumber || '',
     location: existingUser?.location || '',
-    signupDate: existingUser?.signupDate || '',
   });
   const [errors, setErrors] = useState({});
   const [profileImage, setProfileImage] = useState(existingUser?.profileImage || null);
