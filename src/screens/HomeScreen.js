@@ -17,15 +17,9 @@ const HomeScreen = ({ route }) => {
     navigation.navigate(screen, { user });
   };
 
-  // Simple theme-aware styles
-  const dynamicStyles = {
-    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f8fafc',
-    textColor: theme === 'dark' ? '#ffffff' : '#0f172a',
-    mutedText: theme === 'dark' ? '#a0a0a0' : '#64748b',
-    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
-    borderColor: theme === 'dark' ? '#404040' : '#e2e8f0',
-    primaryColor: '#197ce5',
-  };
+  // Use theme context for consistent styling
+  const { getThemeColors } = useTheme();
+  const dynamicStyles = getThemeColors();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -56,10 +50,10 @@ const HomeScreen = ({ route }) => {
             onPress={() => navigation.navigate('Profile', { user })}
           >
             {user.profileImage ? (
-              <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
+              <Image source={{ uri: user.profileImage }} style={[styles.profileImage, { borderColor: dynamicStyles.borderColor }]} />
             ) : (
               <View style={[styles.profilePlaceholder, { backgroundColor: dynamicStyles.primaryColor }]}>
-                <Icon name="user" size={24} color="#ffffff" />
+                <Icon name="user" size={24} color={dynamicStyles.buttonText} />
               </View>
             )}
           </TouchableOpacity>
@@ -90,8 +84,8 @@ const HomeScreen = ({ route }) => {
           style={[styles.featureCard, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]} 
           onPress={() => navigateTo('Locations')}
         >
-          <View style={[styles.cardIcon, { backgroundColor: '#3b82f615' }]}>
-            <Icon name="map-pin" size={28} color="#3b82f6" />
+          <View style={[styles.cardIcon, { backgroundColor: `${dynamicStyles.successColor}15` }]}>
+            <Icon name="map-pin" size={28} color={dynamicStyles.successColor} />
           </View>
           <View style={styles.cardContent}>
             <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>
@@ -114,7 +108,6 @@ const HomeScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   headerSection: {
     paddingTop: 50,
@@ -158,7 +151,6 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
   },
   profilePlaceholder: {
     width: 48,

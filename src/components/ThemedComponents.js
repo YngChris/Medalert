@@ -259,13 +259,13 @@ export const ThemedStatusIndicator = ({
   text, 
   style = {} 
 }) => {
-  const { commonStyles } = useThemedStyles();
+  const { commonStyles, dynamicStyles } = useThemedStyles();
   
   const indicatorStyle = commonStyles[`${status}Indicator`] || commonStyles.successIndicator;
   
   return (
     <View style={[indicatorStyle, style]}>
-      <Text style={styles.indicatorText}>{text}</Text>
+      <Text style={[styles.indicatorText, { color: dynamicStyles.buttonText }]}>{text}</Text>
     </View>
   );
 };
@@ -299,7 +299,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   indicatorText: {
-    color: '#ffffff',
     fontSize: 12,
     fontWeight: '600',
   },

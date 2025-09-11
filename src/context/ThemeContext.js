@@ -60,8 +60,13 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const changeTheme = async (newTheme) => {
+    // Update theme state immediately for instant UI changes
     setTheme(newTheme);
-    await saveTheme(newTheme);
+    
+    // Save to storage asynchronously (non-blocking)
+    saveTheme(newTheme).catch(error => {
+      console.error('Error saving theme:', error);
+    });
   };
 
   const getThemeColors = () => {
@@ -102,6 +107,7 @@ export const ThemeProvider = ({ children }) => {
         buttonText: '#ffffff',
         disabledBackground: '#1c1c1e',
         disabledText: '#48484a',
+        modalOverlay: 'rgba(0, 0, 0, 0.8)',
       };
     } else {
       return {
@@ -134,6 +140,7 @@ export const ThemeProvider = ({ children }) => {
         buttonText: '#ffffff',
         disabledBackground: '#f2f2f7',
         disabledText: '#8e8e93',
+        modalOverlay: 'rgba(0, 0, 0, 0.5)',
       };
     }
   };

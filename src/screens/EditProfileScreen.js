@@ -14,11 +14,13 @@ import * as ImagePicker from 'expo-image-picker';
 import ProfileDetails from '../components/ProfileDetails';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import KeyboardAvoidingWrapper from '../components/KeyboardAvoidingWrapper';
 
 const EditProfileScreen = ({ navigation, route }) => {
   const { getThemeColors } = useTheme();
   const { updateProfile } = useAuth();
+  const { t } = useLanguage();
   const existingUser = route.params?.user;
   const [loading, setLoading] = useState(false);
 
@@ -38,13 +40,13 @@ const EditProfileScreen = ({ navigation, route }) => {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: 'Edit Profile',
+      title: t('editProfile.title'),
       headerStyle: {
         backgroundColor: getThemeColors().backgroundColor,
       },
       headerTintColor: getThemeColors().textColor,
     });
-  }, [navigation, getThemeColors]);
+  }, [navigation, getThemeColors, t]);
 
   const handleChange = (field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -114,11 +116,11 @@ const EditProfileScreen = ({ navigation, route }) => {
         if (response && response.user) {
           // Profile update successful
           Alert.alert(
-            'Success!',
-            'Profile updated successfully!',
+            t('success'),
+            t('editProfile.profileSaved'),
             [
               {
-                text: 'Continue',
+                text: t('ok'),
                 onPress: () => {
                   // Navigate to Home screen with updated user data
                   navigation.navigate('Home', {
@@ -130,19 +132,19 @@ const EditProfileScreen = ({ navigation, route }) => {
             ]
           );
         } else {
-          Alert.alert('Error', 'Failed to update profile. Please try again.');
+          Alert.alert(t('error'), t('editProfile.saveError'));
         }
       } catch (error) {
         console.error('Error updating profile:', error);
         
-        let errorMessage = 'Failed to update profile. Please try again.';
+        let errorMessage = t('editProfile.saveError');
         if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         } else if (error.message) {
           errorMessage = error.message;
         }
         
-        Alert.alert('Update Error', errorMessage);
+        Alert.alert(t('error'), errorMessage);
       } finally {
         setLoading(false);
       }
@@ -167,11 +169,15 @@ const EditProfileScreen = ({ navigation, route }) => {
       />
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.saveButton} onPress={onSavePress} disabled={loading}>
+        <TouchableOpacity 
+          style={[styles.saveButton, { backgroundColor: dynamicStyles.primaryColor }]} 
+          onPress={handleSave}
+          disabled={loading}
+        >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={dynamicStyles.buttonText} />
           ) : (
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Text style={[styles.saveButtonText, { color: dynamicStyles.buttonText }]}>{t('editProfile.saveChanges')}</Text>
           )}
         </TouchableOpacity>
 
@@ -179,7 +185,7 @@ const EditProfileScreen = ({ navigation, route }) => {
           style={[styles.cancelButton, { borderColor: dynamicStyles.borderColor }]} 
           onPress={() => navigation.goBack()}
         >
-          <Text style={[styles.cancelButtonText, { color: dynamicStyles.textColor }]}>Cancel</Text>
+          <Text style={[styles.cancelButtonText, { color: dynamicStyles.textColor }]}>{t('editProfile.cancel')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingWrapper>
@@ -213,6 +219,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     borderRadius: 8,
     paddingVertical: 14,
+    paddingHorizontal:20,
     alignItems: 'center',
     marginTop: 20,
   },

@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider } from "./src/context/ThemeContext";
+import { LanguageProvider } from "./src/context/LanguageContext";
 import Toast from "react-native-toast-message";
 import KeyboardAvoidingWrapper from "./src/components/KeyboardAvoidingWrapper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -25,6 +26,7 @@ import ManualBarcodeScannerScreen from "./src/screens/ManualBarcodeScannerScreen
 import { ReportDetailScreen } from "./src/screens/ReportDetailScreen";
 import { EditMyReportsScreen } from "./src/screens/EditMyReportsScreen";
 import AddLocationScreen from "./src/screens/AddLocationScreen";
+import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 
 const Stack = createNativeStackNavigator();
 const NAV_STATE_KEY = "navState_v1";
@@ -60,13 +62,14 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <KeyboardAvoidingWrapper
-          behavior="padding"
-          keyboardVerticalOffset={0}
-          enableOnAndroid={true}
-        >
+    <LanguageProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <KeyboardAvoidingWrapper
+            behavior="padding"
+            keyboardVerticalOffset={0}
+            enableOnAndroid={true}
+          >
           <NavigationContainer initialState={initialNavState} onStateChange={handleStateChange}>
             <Stack.Navigator initialRouteName="GetStarted">
                 <Stack.Screen
@@ -158,11 +161,17 @@ export default function App() {
                   component={AddLocationScreen}
                   options={{ headerShown: false }}
                 />
+                <Stack.Screen
+                  name="ChangePassword"
+                  component={ChangePasswordScreen}
+                  options={{ headerShown: false }}
+                />
             </Stack.Navigator>
             <Toast />
           </NavigationContainer>
-        </KeyboardAvoidingWrapper>
-      </AuthProvider>
-    </ThemeProvider>
+          </KeyboardAvoidingWrapper>
+        </AuthProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }

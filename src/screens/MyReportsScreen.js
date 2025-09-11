@@ -24,57 +24,46 @@ const { width } = Dimensions.get('window');
 
 // No hardcoded data - reports will be loaded from storage
 
-const getStatusConfig = (theme) => ({
+const getStatusConfig = (dynamicStyles) => ({
   pending: { 
     label: 'Pending', 
-    color: '#ffc107', 
+    color: dynamicStyles.warningColor, 
     icon: 'clock', 
-    bgColor: theme === 'dark' ? 'rgba(255, 193, 7, 0.2)' : '#fff3cd' 
+    bgColor: dynamicStyles.warningBackground 
   },
   under_review: { 
     label: 'Under Review', 
-    color: '#17a2b8', 
+    color: dynamicStyles.primaryColor, 
     icon: 'search', 
-    bgColor: theme === 'dark' ? 'rgba(23, 162, 184, 0.2)' : '#d1ecf1' 
+    bgColor: dynamicStyles.primaryColor + '20' 
   },
   resolved: { 
     label: 'Resolved', 
-    color: '#28a745', 
+    color: dynamicStyles.successColor, 
     icon: 'check-circle', 
-    bgColor: theme === 'dark' ? 'rgba(40, 167, 69, 0.2)' : '#d4edda' 
+    bgColor: dynamicStyles.successBackground 
   },
   rejected: { 
     label: 'Rejected', 
-    color: '#dc3545', 
+    color: dynamicStyles.errorColor, 
     icon: 'x-circle', 
-    bgColor: theme === 'dark' ? 'rgba(220, 53, 69, 0.2)' : '#f8d7da' 
+    bgColor: dynamicStyles.errorBackground 
   }
 });
 
-const getSeverityConfig = (theme) => ({
-  low: { label: 'Low', color: '#28a745', icon: 'alert-circle' },
-  medium: { label: 'Medium', color: '#ffc107', icon: 'alert-triangle' },
-  high: { label: 'High', color: '#fd7e14', icon: 'alert-octagon' },
-  critical: { label: 'Critical', color: '#dc3545', icon: 'alert-octagon' }
+const getSeverityConfig = (dynamicStyles) => ({
+  low: { label: 'Low', color: dynamicStyles.successColor, icon: 'alert-circle' },
+  medium: { label: 'Medium', color: dynamicStyles.warningColor, icon: 'alert-triangle' },
+  high: { label: 'High', color: dynamicStyles.warningColor, icon: 'alert-octagon' },
+  critical: { label: 'Critical', color: dynamicStyles.errorColor, icon: 'alert-octagon' }
 });
 
-const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
+const EnhancedReportItem = ({ report, onEdit, onDelete, onView, dynamicStyles }) => {
   const [imageError, setImageError] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const dynamicStyles = {
-    backgroundColor: theme === 'dark' ? '#2d2d2d' : '#ffffff',
-    textColor: theme === 'dark' ? '#ffffff' : '#121417',
-    mutedText: theme === 'dark' ? '#a0a0a0' : '#677583',
-    borderColor: theme === 'dark' ? '#404040' : '#f1f2f4',
-    cardBackground: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    primaryColor: '#197ce5',
-    warningColor: '#ffc107',
-    dangerColor: '#dc3545'
-  };
-
-  const statusConfig = useMemo(() => getStatusConfig(theme), [theme]);
-  const severityConfig = useMemo(() => getSeverityConfig(theme), [theme]);
+  const statusConfig = useMemo(() => getStatusConfig(dynamicStyles), [dynamicStyles]);
+  const severityConfig = useMemo(() => getSeverityConfig(dynamicStyles), [dynamicStyles]);
   const status = statusConfig[report.status] || statusConfig.pending;
   const severity = severityConfig[report.severity] || severityConfig.medium;
 
@@ -244,7 +233,7 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
           onPress={() => onView(report)}
         >
           <Icon name="eye" size={16} color={dynamicStyles.primaryColor} />
-          <Text style={styles.viewButtonText}>View</Text>
+          <Text style={[styles.viewButtonText, { color: dynamicStyles.primaryColor }]}>View</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -252,15 +241,15 @@ const EnhancedReportItem = ({ report, onEdit, onDelete, onView, theme }) => {
           onPress={() => onEdit(report)}
         >
           <Icon name="edit" size={16} color={dynamicStyles.warningColor} />
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={[styles.editButtonText, { color: dynamicStyles.warningColor }]}>Edit</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.actionButton, styles.deleteButton]} 
           onPress={handleDelete}
         >
-          <Icon name="trash-2" size={16} color={dynamicStyles.dangerColor} />
-          <Text style={styles.deleteButtonText}>Delete</Text>
+          <Icon name="trash-2" size={16} color={dynamicStyles.errorColor} />
+          <Text style={[styles.deleteButtonText, { color: dynamicStyles.errorColor }]}>Delete</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -281,26 +270,9 @@ export const MyReportsScreen = () => {
   const lastDeletedReport = useRef(null);
   const navigation = useNavigation();
   const route = useRoute();
-  const { theme } = useTheme();
+  const { getThemeColors } = useTheme();
   const { user } = useAuth();
-
-  // Theme-aware styles
-  const dynamicStyles = {
-    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    textColor: theme === 'dark' ? '#ffffff' : '#121417',
-    mutedText: theme === 'dark' ? '#a0a0a0' : '#677583',
-    borderColor: theme === 'dark' ? '#404040' : '#f1f2f4',
-    inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
-    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
-    primaryColor: '#197ce5',
-    successColor: '#28a745',
-    warningColor: '#ffc107',
-    dangerColor: '#dc3545',
-    infoColor: '#17a2b8',
-    orangeColor: '#fd7e14',
-    whiteColor: '#ffffff',
-    redColor: '#d32f2f'
-  };
+  const dynamicStyles = getThemeColors();
 
   // Filter and search reports
   const filteredReports = useMemo(() => {
@@ -629,7 +601,7 @@ export const MyReportsScreen = () => {
         style={[styles.emptyStateButton, { backgroundColor: dynamicStyles.primaryColor }]}
         onPress={() => navigation.navigate('ReportForm')}
       >
-        <Text style={styles.emptyStateButtonText}>Create Report</Text>
+        <Text style={[styles.emptyStateButtonText, { color: dynamicStyles.buttonText }]}>Create Report</Text>
       </TouchableOpacity>
     </View>
   );
@@ -655,7 +627,7 @@ export const MyReportsScreen = () => {
               />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={goToRecycleBin}>
-              <Icon name="trash-2" size={22} color={dynamicStyles.redColor} />
+              <Icon name="trash-2" size={22} color={dynamicStyles.errorColor} />
             </TouchableOpacity>
           </View>
         </View>
@@ -697,7 +669,7 @@ export const MyReportsScreen = () => {
               refreshing={isRefreshing}
               onRefresh={onRefresh}
               colors={[dynamicStyles.primaryColor]}
-              tintColor={theme === 'dark' ? dynamicStyles.whiteColor : dynamicStyles.primaryColor}
+              tintColor={dynamicStyles.primaryColor}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -734,7 +706,7 @@ export const MyReportsScreen = () => {
                 onEdit={() => handleEdit(report)}
                 onDelete={() => handleDelete(report.id)}
                 onView={() => handleView(report)}
-                theme={theme}
+                dynamicStyles={dynamicStyles}
               />
             ))
           )}
@@ -742,10 +714,10 @@ export const MyReportsScreen = () => {
 
         {/* Floating Add Button */}
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: dynamicStyles.primaryColor }]}
           onPress={() => navigation.navigate('ReportForm')}
         >
-          <Icon name="plus" size={24} color="#ffffff" />
+          <Icon name="plus" size={24} color={dynamicStyles.buttonText} />
         </TouchableOpacity>
       </View>
 
@@ -776,8 +748,7 @@ export const MyReportsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
+    flex: 1
   },
   header: {
     flexDirection: 'row',
@@ -819,7 +790,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e6ed',
   },
   searchInput: {
     flex: 1,
@@ -832,7 +802,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e6ed',
   },
   filterHeader: {
     flexDirection: 'row',
@@ -879,15 +848,12 @@ const styles = StyleSheet.create({
     flex: 1 
   },
   reportItem: {
-    backgroundColor: '#fff',
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f1f2f4',
     overflow: 'hidden',
     elevation: 2,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -898,7 +864,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
   },
   badgeContainer: {
     flexDirection: 'row',
@@ -1037,26 +1002,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   viewButton: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: 'transparent',
   },
   viewButtonText: {
-    color: '#197ce5',
     fontSize: 12,
     fontWeight: '600',
   },
   editButton: {
-    backgroundColor: '#fff8e1',
+    backgroundColor: 'transparent',
   },
   editButtonText: {
-    color: '#ffc107',
     fontSize: 12,
     fontWeight: '600',
   },
   deleteButton: {
-    backgroundColor: '#ffebee',
+    backgroundColor: 'transparent',
   },
   deleteButtonText: {
-    color: '#dc3545',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1066,13 +1028,15 @@ const styles = StyleSheet.create({
     bottom: 80,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#197ce5',
     borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    zIndex: 10,
+    gap: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   emptyState: {
     flex: 1,
@@ -1095,20 +1059,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   emptyStateButton: {
+    marginTop: 20,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
   },
   emptyStateButtonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#f0f2f4',
-    backgroundColor: '#ffffff',
     paddingVertical: 8,
     paddingHorizontal: 4,
     justifyContent: 'space-around',
@@ -1118,7 +1080,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerButtonText: {
-    color: '#637588',
     fontSize: 12,
     fontWeight: '500',
     marginTop: 2,

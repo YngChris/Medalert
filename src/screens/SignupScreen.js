@@ -15,11 +15,13 @@ import { Platform } from 'react-native';
 import Icon from "react-native-vector-icons/Feather";
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import KeyboardAvoidingWrapper from '../components/KeyboardAvoidingWrapper';
 
 const SignupScreen = ({ navigation }) => {
   const { getThemeColors } = useTheme();
   const { register } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: "",
@@ -395,8 +397,8 @@ const SignupScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: dynamicStyles.backgroundColor }]}
       contentContainerStyle={styles.contentContainer}
     >
-      <View style={styles.imagePlaceholder} />
-      <Text style={[styles.title, { color: dynamicStyles.textColor }]}>Create Your Account</Text>
+      <View style={[styles.imagePlaceholder, { backgroundColor: dynamicStyles.cardBackground }]} />
+      <Text style={[styles.title, { color: dynamicStyles.textColor }]}>{t('signup.title')}</Text>
 
       {/* Profile Picture Upload Section */}
       <View style={styles.profileImageContainer}>
@@ -404,27 +406,27 @@ const SignupScreen = ({ navigation }) => {
           {profileImage ? (
             <View style={styles.profileImageWrapper}>
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
-              <View style={styles.checkmarkOverlay}>
+              <View style={[styles.checkmarkOverlay, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.successColor }]}>
                 <Icon name="check-circle" size={20} color={dynamicStyles.successColor} />
               </View>
             </View>
           ) : (
-            <View style={styles.placeholderImage}>
+            <View style={[styles.placeholderImage, { backgroundColor: dynamicStyles.inputBackground }]}>
               <Icon name="camera" size={30} color={dynamicStyles.mutedText} />
             </View>
           )}
-          <Text style={styles.changeText}>
-            {profileImage ? 'Change Profile Photo' : 'Upload Profile Photo'}
+          <Text style={[styles.changeText, { color: dynamicStyles.primaryColor }]}>
+            {profileImage ? t('editProfile.changePhoto') : t('editProfile.profilePicture')}
           </Text>
         </TouchableOpacity>
         <Text style={[styles.optionalText, { color: dynamicStyles.mutedText }]}>
-          {profileImage ? 'Profile photo selected ✓' : 'Profile photo is optional'}
+          {profileImage ? t('signup.photoSelected') : t('signup.photoOptional')}
         </Text>
       </View>
 
       <View style={styles.formContainer}>
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>First Name *</Text>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>{t('signup.firstName')} *</Text>
           <TextInput
             style={[styles.input, { 
               backgroundColor: dynamicStyles.inputBackground, 
@@ -435,7 +437,7 @@ const SignupScreen = ({ navigation }) => {
             value={form.firstName}
             onChangeText={(value) => handleChange("firstName", value)}
             onBlur={() => handleBlur("firstName")}
-            placeholder="Enter your first name"
+            placeholder={t('signup.firstName')}
             placeholderTextColor={dynamicStyles.mutedText}
           />
           {errors.firstName && (
@@ -446,7 +448,7 @@ const SignupScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Last Name *</Text>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>{t('signup.lastName')} *</Text>
           <TextInput
             style={[styles.input, { 
               backgroundColor: dynamicStyles.inputBackground, 
@@ -457,7 +459,7 @@ const SignupScreen = ({ navigation }) => {
             value={form.lastName}
             onChangeText={(value) => handleChange("lastName", value)}
             onBlur={() => handleBlur("lastName")}
-            placeholder="Enter your last name"
+            placeholder={t('signup.lastName')}
             placeholderTextColor={dynamicStyles.mutedText}
           />
           {errors.lastName && (
@@ -468,7 +470,7 @@ const SignupScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Email *</Text>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>{t('signup.email')} *</Text>
           <TextInput
             style={[styles.input, { 
               backgroundColor: dynamicStyles.inputBackground, 
@@ -479,7 +481,7 @@ const SignupScreen = ({ navigation }) => {
             value={form.email}
             onChangeText={(value) => handleChange("email", value)}
             onBlur={() => handleBlur("email")}
-            placeholder="Enter your email"
+            placeholder={t('signup.email')}
             placeholderTextColor={dynamicStyles.mutedText}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -492,7 +494,7 @@ const SignupScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>Password *</Text>
+          <Text style={[styles.label, { color: dynamicStyles.textColor }]}>{t('signup.password')} *</Text>
           <View style={[styles.passwordInputContainer, { 
             backgroundColor: dynamicStyles.inputBackground, 
             borderColor: getInputBorderColor('password'),
@@ -567,9 +569,9 @@ const SignupScreen = ({ navigation }) => {
               disabled={locationLoading}
             >
               {locationLoading ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+                <ActivityIndicator color={dynamicStyles.buttonText} size="small" />
               ) : (
-                <Icon name="map-pin" size={16} color="#ffffff" />
+                <Icon name="map-pin" size={16} color={dynamicStyles.buttonText} />
               )}
             </TouchableOpacity>
           </View>
@@ -578,11 +580,11 @@ const SignupScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.signupButton} onPress={onSignUpPress} disabled={loading}>
+        <TouchableOpacity style={[styles.signupButton, { backgroundColor: dynamicStyles.primaryColor }]} onPress={onSignUpPress} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={dynamicStyles.buttonText} />
           ) : (
-            <Text style={styles.signupButtonText}>Create Account</Text>
+            <Text style={[styles.signupButtonText, { color: dynamicStyles.buttonText }]}>Create Account</Text>
           )}
         </TouchableOpacity>
 
@@ -611,7 +613,6 @@ const SignupScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   contentContainer: {
     padding: 20,
@@ -619,7 +620,6 @@ const styles = StyleSheet.create({
   },
   imagePlaceholder: {
     height: 120,
-    backgroundColor: "#e0e0e0",
     borderRadius: 12,
     marginBottom: 20,
   },
@@ -627,7 +627,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 20,
-    color: "#333",
     textAlign: "center",
   },
   row: {
@@ -644,44 +643,33 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 6,
     fontSize: 14,
-    color: "#333",
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    backgroundColor: "#fafafa",
-    color: "#000",
   },
   inputError: {
-    borderColor: "red",
   },
   errorText: {
-    color: "red",
     fontSize: 12,
     marginTop: 4,
   },
   phoneContainer: {
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: "#fafafa",
   },
   phoneTextContainer: {
     backgroundColor: "transparent",
     paddingVertical: 0,
   },
   phoneTextInput: {
-    color: "#000",
     height: 45,
     fontSize: 14,
   },
   flagButton: {
-    backgroundColor: "#fff",
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
   },
@@ -695,36 +683,30 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   passwordToggleText: {
-    color: "#007AFF",
     fontSize: 14,
   },
   signUpButton: {
-    backgroundColor: "#007AFF",
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 10,
   },
   signUpButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   googleButton: {
-    backgroundColor: "#DB4437",
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 10,
   },
   googleButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   loginText: {
     marginTop: 20,
-    color: "#007AFF",
     textAlign: "center",
     fontSize: 14,
   },
@@ -748,29 +730,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 2,
     borderWidth: 1,
-    borderColor: '#28a745',
   },
   placeholderImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#e0e0e0",
     justifyContent: "center",
     alignItems: "center",
   },
   changeText: {
-    color: "#007AFF",
     fontSize: 14,
     textDecorationLine: "underline",
   },
   optionalText: {
     marginTop: 5,
     fontSize: 12,
-    color: "#666",
     textAlign: "center",
   },
   formContainer: {
@@ -780,14 +757,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   signupButton: {
-    backgroundColor: "#007AFF",
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 10,
   },
   signupButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -815,17 +790,13 @@ const styles = StyleSheet.create({
   locationInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    backgroundColor: "#fafafa",
-    color: "#000",
     marginRight: 8,
   },
   locationButton: {
-    backgroundColor: "#007AFF",
     borderRadius: 8,
     width: 40,
     height: 40,
@@ -845,10 +816,7 @@ const styles = StyleSheet.create({
   passwordInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
-    backgroundColor: "#fafafa",
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
@@ -856,7 +824,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     paddingVertical: 6,
-    color: "#000",
   },
   passwordToggle: {
     padding: 4,

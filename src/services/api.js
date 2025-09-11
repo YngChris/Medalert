@@ -175,18 +175,8 @@ export const authAPI = {
 
   // Update user profile
   updateProfile: async (profileData) => {
-    if (shouldUseMockAPI()) {
-      console.log("🧪 Using Mock API for profile update");
-      return await mockAuthAPI.updateProfile(profileData);
-    }
-    
-    try {
-      const response = await api.put("/api/auth/update-profile", profileData);
-      return response.data;
-    } catch (error) {
-      // Do not fall back to mock unless explicitly enabled by flag (handled above)
-      throw error;
-    }
+    const response = await apiRequest('/api/auth/profile', 'PUT', profileData);
+    return response;
   },
 
   // Change password

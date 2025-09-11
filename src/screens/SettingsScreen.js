@@ -4,12 +4,15 @@ import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { theme, changeTheme, getThemeColors } = useTheme();
+  const { logout } = useAuth();
+  const { currentLanguage, changeLanguage: changeAppLanguage, t, getAvailableLanguages } = useLanguage();
 
-  const [language, setLanguage] = useState('English');
   const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -21,10 +24,7 @@ const SettingsScreen = () => {
 
   const loadSettings = async () => {
     try {
-      const savedLanguage = await AsyncStorage.getItem('language');
       const savedTwoFactor = await AsyncStorage.getItem('twoFactorEnabled');
-
-      if (savedLanguage) setLanguage(savedLanguage);
       if (savedTwoFactor) setIsTwoFactorEnabled(JSON.parse(savedTwoFactor));
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -49,16 +49,30 @@ const SettingsScreen = () => {
 
 
   const changeThemeHandler = async (newTheme) => {
-    await changeTheme(newTheme);
-    setShowThemeModal(false);
-    Alert.alert('Theme Changed', `Theme changed to ${newTheme}`);
+    try {
+      await changeTheme(newTheme);
+      setShowThemeModal(false);
+      
+      // Show confirmation with theme-appropriate styling
+      const themeMessage = newTheme === 'System' 
+        ? t('settings.themeSystemMessage')
+        : t('settings.themeChangedMessage', { theme: newTheme });
+        
+      Alert.alert(t('settings.themeUpdated'), themeMessage, [
+        { text: t('ok'), style: 'default' }
+      ]);
+    } catch (error) {
+      console.error('Error changing theme:', error);
+      Alert.alert(t('error'), 'Failed to change theme. Please try again.');
+    }
   };
 
-  const changeLanguage = (newLanguage) => {
-    setLanguage(newLanguage);
-    saveSetting('language', newLanguage);
-    setShowLanguageModal(false);
-    Alert.alert('Language Changed', `Language changed to ${newLanguage}`);
+  const handleLanguageChange = async (newLanguage) => {
+    const success = await changeAppLanguage(newLanguage);
+    if (success) {
+      setShowLanguageModal(false);
+      Alert.alert(t('settings.languageChanged'), t('settings.languageChangedMessage', { language: newLanguage }));
+    }
   };
 
 
@@ -68,42 +82,83 @@ const SettingsScreen = () => {
     
     if (value) {
       Alert.alert(
-        'Two-Factor Authentication Enabled',
-        'Please set up your two-factor authentication method in the next step.',
+        t('settings.twoFactorEnabled'),
+        t('settings.twoFactorEnabledMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Set Up Now', onPress: () => navigation.navigate('TwoFactorSetup') }
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('settings.setupNow'), onPress: () => navigation.navigate('TwoFactorSetup') }
         ]
       );
     } else {
-      Alert.alert('Two-Factor Authentication Disabled', 'Your account is now less secure.');
+      Alert.alert(t('settings.twoFactorDisabled'), t('settings.twoFactorDisabledMessage'));
     }
   };
 
   const handleHelpCenter = () => {
     Alert.alert(
-      'Help Center',
-      'For assistance, please contact our support team at support@medalert.com or call +1-800-MEDALERT',
+      t('settings.helpCenterTitle'),
+      t('settings.helpCenterMessage'),
       [
-        { text: 'Copy Email', onPress: () => Alert.alert('Email copied to clipboard') },
-        { text: 'OK', style: 'default' }
+        { text: t('settings.copyEmail'), onPress: () => Alert.alert(t('settings.emailCopied')) },
+        { text: t('ok'), style: 'default' }
       ]
     );
   };
 
-  const handleChangePassword = () => {
+  const handleAbout = () => {
     Alert.alert(
-      'Change Password',
-      'This feature will be implemented in the next update. For now, please contact support.',
-      [{ text: 'OK', style: 'default' }]
+      t('settings.aboutTitle'),
+      t('settings.aboutMessage'),
+      [{ text: t('ok'), style: 'default' }]
     );
+  };
+
+  const handleChangePassword = () => {
+    navigation.navigate('ChangePassword');
   };
 
   const handleManageAccounts = () => {
     Alert.alert(
-      'Manage Connected Accounts',
-      'This feature will be implemented in the next update. For now, please contact support.',
-      [{ text: 'OK', style: 'default' }]
+      t('settings.manageAccounts'),
+      t('settings.manageAccountsMessage'),
+      [{ text: t('ok'), style: 'default' }]
+    );
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      t('settings.logout'),
+      t('settings.logoutConfirm'),
+      [
+        {
+          text: t('cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('settings.logout'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              // Clear all authentication-related data from AsyncStorage
+              await AsyncStorage.multiRemove([
+                'authToken',
+                'refreshToken',
+                'userData',
+                'user'
+              ]);
+              // Navigate to login or home screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert(t('error'), t('settings.logoutError'));
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -116,27 +171,27 @@ const SettingsScreen = () => {
         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color={dynamicStyles.textColor} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: dynamicStyles.textColor }]}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: dynamicStyles.textColor }]}>{t('settings.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {/* Account Section */}
-      <SectionTitle title="Account" dynamicStyles={dynamicStyles} />
+      <SectionTitle title={t('settings.account')} dynamicStyles={dynamicStyles} />
       <TouchableOpacity onPress={handleChangePassword}>
-        <RowItem title="Change Password" hasArrow dynamicStyles={dynamicStyles} />
+        <RowItem title={t('settings.changePassword')} hasArrow dynamicStyles={dynamicStyles} />
       </TouchableOpacity>
       <TouchableOpacity onPress={handleManageAccounts}>
-        <RowItem title="Manage Connected Accounts" hasArrow dynamicStyles={dynamicStyles} />
+        <RowItem title={t('settings.manageAccounts')} hasArrow dynamicStyles={dynamicStyles} />
       </TouchableOpacity>
 
       {/* Account Security */}
-      <SectionTitle title="Account Security" dynamicStyles={dynamicStyles} />
+      <SectionTitle title={t('settings.accountSecurity')} dynamicStyles={dynamicStyles} />
       <View style={[styles.card, { backgroundColor: dynamicStyles.cardBackground, borderColor: dynamicStyles.borderColor }]}>
         <View style={styles.cardContent}>
           <View style={styles.cardText}>
-            <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>Two-Factor Authentication</Text>
+            <Text style={[styles.cardTitle, { color: dynamicStyles.textColor }]}>{t('settings.twoFactorAuth')}</Text>
             <Text style={[styles.cardDescription, { color: dynamicStyles.mutedText }]}>
-              Enable two-factor authentication for enhanced security
+              {t('settings.twoFactorDesc')}
             </Text>
           </View>
           <Switch
@@ -149,18 +204,30 @@ const SettingsScreen = () => {
       </View>
 
       {/* App Preferences */}
-      <SectionTitle title="App Preferences" dynamicStyles={dynamicStyles} />
+      <SectionTitle title={t('settings.appPreferences')} dynamicStyles={dynamicStyles} />
       <TouchableOpacity onPress={handleLanguagePress}>
-        <RowItem title="Language" rightText={language} dynamicStyles={dynamicStyles} />
+        <RowItem title={t('settings.language')} rightText={currentLanguage} dynamicStyles={dynamicStyles} />
       </TouchableOpacity>
       <TouchableOpacity onPress={handleThemePress}>
-        <RowItem title="Theme" rightText={theme} dynamicStyles={dynamicStyles} />
+        <RowItem title={t('settings.theme')} rightText={theme} dynamicStyles={dynamicStyles} />
       </TouchableOpacity>
 
       {/* Support */}
-      <SectionTitle title="Support" dynamicStyles={dynamicStyles} />
+      <SectionTitle title={t('settings.support')} dynamicStyles={dynamicStyles} />
       <TouchableOpacity onPress={handleHelpCenter}>
-        <RowItem title="Help Center" hasArrow dynamicStyles={dynamicStyles} />
+        <RowItem title={t('settings.helpCenter')} hasArrow dynamicStyles={dynamicStyles} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={handleAbout}>
+        <RowItem title={t('settings.about')} hasArrow dynamicStyles={dynamicStyles} />
+      </TouchableOpacity>
+
+      {/* Account Actions */}
+      <SectionTitle title={t('settings.accountActions')} dynamicStyles={dynamicStyles} />
+      <TouchableOpacity onPress={handleLogout}>
+        <View style={[styles.row, styles.logoutRow]}>
+          <Text style={[styles.rowTitle, styles.logoutText, { color: dynamicStyles.errorColor }]}>{t('settings.logout')}</Text>
+          <Icon name="log-out" size={20} color={dynamicStyles.errorColor} />
+        </View>
       </TouchableOpacity>
 
 
@@ -168,9 +235,11 @@ const SettingsScreen = () => {
       <LanguageModal
         visible={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
-        onSelect={changeLanguage}
-        currentLanguage={language}
+        onSelect={handleLanguageChange}
+        currentLanguage={currentLanguage}
+        availableLanguages={getAvailableLanguages()}
         dynamicStyles={dynamicStyles}
+        t={t}
       />
       
       <ThemeModal
@@ -206,26 +275,27 @@ const RowItem = ({ title, hasArrow, rightText, dynamicStyles }) => (
 
 /* ---------- Theme Modal ---------- */
 const ThemeModal = ({ visible, onClose, onSelect, currentTheme, dynamicStyles }) => {
+  const { t } = useLanguage();
   const themes = ['System', 'Light', 'Dark'];
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={[styles.modalOverlay, { backgroundColor: dynamicStyles.modalOverlay }]}>
         <View style={[styles.modalContent, { backgroundColor: dynamicStyles.cardBackground }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: dynamicStyles.textColor }]}>Select Theme</Text>
+            <Text style={[styles.modalTitle, { color: dynamicStyles.textColor }]}>{t('settings.selectTheme')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Icon name="x" size={24} color={dynamicStyles.textColor} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
-            {themes.map((t) => (
+            {themes.map((theme) => (
               <TouchableOpacity
-                key={t}
-                style={[styles.modalOption, currentTheme === t && [styles.modalOptionSelected, { backgroundColor: dynamicStyles.primaryColor + '20' }]]}
-                onPress={() => onSelect(t)}
+                key={theme}
+                style={[styles.modalOption, currentTheme === theme && [styles.modalOptionSelected, { backgroundColor: dynamicStyles.primaryColor + '20' }]]}
+                onPress={() => onSelect(theme)}
               >
-                <Text style={[styles.modalOptionText, { color: dynamicStyles.textColor }, currentTheme === t && [styles.modalOptionTextSelected, { color: dynamicStyles.primaryColor }]]}>{t}</Text>
-                {currentTheme === t && <Icon name="check" size={20} color={dynamicStyles.primaryColor} />}
+                <Text style={[styles.modalOptionText, { color: dynamicStyles.textColor }, currentTheme === theme && [styles.modalOptionTextSelected, { color: dynamicStyles.primaryColor }]]}>{theme}</Text>
+                {currentTheme === theme && <Icon name="check" size={20} color={dynamicStyles.primaryColor} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -235,21 +305,20 @@ const ThemeModal = ({ visible, onClose, onSelect, currentTheme, dynamicStyles })
   );
 };
 
-/* ---------- Language Modal (same as yours but shortened) ---------- */
-const LanguageModal = ({ visible, onClose, onSelect, currentLanguage, dynamicStyles }) => {
-  const languages = ['English', 'Spanish', 'French', 'German'];
+/* ---------- Language Modal ---------- */
+const LanguageModal = ({ visible, onClose, onSelect, currentLanguage, availableLanguages, dynamicStyles, t }) => {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={[styles.modalOverlay, { backgroundColor: dynamicStyles.modalOverlay }]}>
         <View style={[styles.modalContent, { backgroundColor: dynamicStyles.cardBackground }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: dynamicStyles.textColor }]}>Select Language</Text>
+            <Text style={[styles.modalTitle, { color: dynamicStyles.textColor }]}>{t('settings.selectLanguage')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Icon name="x" size={24} color={dynamicStyles.textColor} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
-            {languages.map((lang) => (
+            {availableLanguages.map((lang) => (
               <TouchableOpacity
                 key={lang}
                 style={[styles.modalOption, currentLanguage === lang && [styles.modalOptionSelected, { backgroundColor: dynamicStyles.primaryColor + '20' }]]}
@@ -298,6 +367,8 @@ const styles = StyleSheet.create({
   modalOptionSelected: {},
   modalOptionText: { fontSize: 16 },
   modalOptionTextSelected: { fontWeight: 'bold' },
+  logoutRow: { marginTop: 8 },
+  logoutText: { fontWeight: '600' },
 });
 
 export default SettingsScreen;

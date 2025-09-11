@@ -14,6 +14,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import Icon from "react-native-vector-icons/Feather";
 import { useAuthRequest, makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -41,6 +42,7 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const { login } = useAuth();
   const { theme, getThemeColors } = useTheme();
+  const { t } = useLanguage();
 
   // Google OAuth configuration using the new API
   const redirectUri = makeRedirectUri({
@@ -304,10 +306,10 @@ export default function LoginScreen() {
               <Icon name="shield" size={48} color="#ffffff" />
             </View>
             <Text style={[styles.welcomeText, { color: dynamicStyles.textColor }]}>
-              Welcome Back
+              {t('login.title')}
             </Text>
             <Text style={[styles.subtitleText, { color: dynamicStyles.mutedText }]}>
-              Sign in to continue to MedAlert
+              {t('login.subtitle')}
             </Text>
           </View>
 
@@ -316,7 +318,7 @@ export default function LoginScreen() {
             {/* Email Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: dynamicStyles.textColor }]}>
-                Email Address
+                {t('login.email')}
               </Text>
               <View style={[
                 styles.inputContainer,
@@ -340,7 +342,7 @@ export default function LoginScreen() {
                   value={form.email}
                   onChangeText={(value) => handleChange("email", value)}
                   onBlur={() => handleBlur("email")}
-                  placeholder="Enter your email address"
+                  placeholder={t('login.email')}
                   placeholderTextColor={dynamicStyles.mutedText}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -422,11 +424,11 @@ export default function LoginScreen() {
                   }
                 ]}>
                   {rememberMe && (
-                    <Icon name="check" size={16} color="#ffffff" />
+                    <Icon name="check" size={16} color={dynamicStyles.buttonText} />
                   )}
                 </View>
                 <Text style={[styles.rememberMeText, { color: dynamicStyles.textColor }]}>
-                  Remember me
+                  {t('login.rememberMe')}
                 </Text>
               </TouchableOpacity>
               
@@ -436,7 +438,7 @@ export default function LoginScreen() {
                 disabled={loading}
               >
                 <Text style={[styles.forgotPasswordText, { color: dynamicStyles.primaryColor }]}>
-                  Forgot Password?
+                  {t('login.forgotPassword')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -454,9 +456,9 @@ export default function LoginScreen() {
               disabled={!isFormValid || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+                <ActivityIndicator color={dynamicStyles.buttonText} size="small" />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text style={[styles.loginButtonText, { color: dynamicStyles.buttonText }]}>{t('login.signIn')}</Text>
               )}
             </TouchableOpacity>
 
@@ -464,7 +466,7 @@ export default function LoginScreen() {
             <View style={styles.dividerContainer}>
               <View style={[styles.dividerLine, { backgroundColor: dynamicStyles.borderColor }]} />
               <Text style={[styles.dividerText, { color: dynamicStyles.mutedText }]}>
-                or continue with
+                {t('login.orContinueWith')}
               </Text>
               <View style={[styles.dividerLine, { backgroundColor: dynamicStyles.borderColor }]} />
             </View>
@@ -491,7 +493,7 @@ export default function LoginScreen() {
                     resizeMode="contain"
                   />
                   <Text style={[styles.googleButtonText, { color: dynamicStyles.textColor }]}>
-                    Sign in with Google
+                    {t('login.signInWithGoogle')}
                   </Text>
                 </>
               )}
@@ -504,9 +506,9 @@ export default function LoginScreen() {
               disabled={loading}
             >
               <Text style={[styles.signUpText, { color: dynamicStyles.mutedText }]}>
-                Don't have an account?{" "}
+                {t('login.noAccount')}{" "}
                 <Text style={{ color: dynamicStyles.primaryColor, fontWeight: '600' }}>
-                  Sign Up
+                  {t('login.signUp')}
                 </Text>
               </Text>
             </TouchableOpacity>
@@ -518,7 +520,7 @@ export default function LoginScreen() {
               disabled={loading}
             >
               <Text style={[styles.backToIntroText, { color: dynamicStyles.primaryColor }]}>
-                Back to Introduction
+                {t('back')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -529,7 +531,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -549,7 +550,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
     elevation: 8,
-    shadowColor: "#197ce5",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -562,11 +563,9 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 16,
-    color: "#677583",
     textAlign: "center",
   },
   formContainer: {
-    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 24,
     elevation: 4,
@@ -652,7 +651,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   loginButtonText: {
-    color: "#ffffff",
     fontSize: 18,
     fontWeight: "700",
   },
@@ -664,7 +662,6 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#e0e6ed",
   },
   dividerText: {
     fontSize: 14,
@@ -679,7 +676,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: "#e0e6ed",
   },
   googleLogo: {
     width: 24,

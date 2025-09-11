@@ -117,22 +117,9 @@ export const ReportformScreen = () => {
     setFormProgress(progress);
   }, [formData]);
 
-  // Theme-aware styles
-  const dynamicStyles = {
-    backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff',
-    textColor: theme === 'dark' ? '#ffffff' : '#111418',
-    inputBackground: theme === 'dark' ? '#2d2d2d' : '#f9fafb',
-    borderColor: theme === 'dark' ? '#404040' : '#e0e6ed',
-    mutedText: theme === 'dark' ? '#a0a0a0' : '#637588',
-    cardBackground: theme === 'dark' ? '#2d2d2d' : '#ffffff',
-    successColor: '#28a745',
-    warningColor: '#ffc107',
-    dangerColor: '#dc3545',
-    orangeColor: '#fd7e14',
-    primaryColor: '#197ce5',
-    whiteColor: '#ffffff',
-    blackColor: '#000'
-  };
+  // Use theme context for consistent styling
+  const { getThemeColors } = useTheme();
+  const dynamicStyles = getThemeColors();
 
   const severityLevels = getSeverityLevels(dynamicStyles);
 
@@ -1218,7 +1205,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitButtonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },

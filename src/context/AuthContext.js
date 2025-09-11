@@ -52,12 +52,13 @@ export const AuthProvider = ({ children }) => {
               // Ensure all required fields are present with fallbacks
               userData = {
                 ...userData,
-                phoneNumber: userData.phoneNumber || userData.phone_number || '',
+                phoneNumber: userData.phoneNumber || userData.phone_number || userData.phoneNumber || '',
                 profileImage: userData.profileImage || userData.profile_image || userData.avatar || null,
                 firstName: userData.firstName || userData.first_name || '',
                 lastName: userData.lastName || userData.last_name || '',
                 email: userData.email || '',
                 location: userData.location || '',
+                id: userData.id || userData._id || userData.userId || null,
               };
               
               setUser(userData);
