@@ -753,7 +753,7 @@ export const MyReportsScreen = () => {
       <View style={[styles.footer, { backgroundColor: dynamicStyles.backgroundColor, borderTopColor: dynamicStyles.borderColor }]}>
         <TouchableOpacity
           style={[styles.footerButton, styles.footerButtonActive]}
-          onPress={() => navigation.navigate('Report')}>
+          onPress={() => navigation.navigate('MyReports')}>
           <Icon name="file-plus" size={24} color={dynamicStyles.primaryColor} />
           <Text style={[styles.footerButtonText, styles.footerButtonTextActive, { color: dynamicStyles.primaryColor }]}>
             Reports

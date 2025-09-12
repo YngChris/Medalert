@@ -205,7 +205,7 @@ export const ReportformScreen = () => {
         [
           { 
             text: 'View My Reports', 
-            onPress: () => navigation.navigate('Report', { user })
+            onPress: () => navigation.navigate('MyReports', { user })
           },
           { 
             text: 'Submit Another', 

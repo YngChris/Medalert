@@ -19,6 +19,7 @@ import MapView, { Marker, Callout } from "react-native-maps";
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { locationsStorage } from '../utils/locationsStorage';
 import Toast from 'react-native-toast-message';
+import { EXPO_PUBLIC_GOOGLE_PLACES_API_KEY } from "@env";
 
 const LocationsScreen = () => {
   const navigation = useNavigation();
@@ -461,7 +462,7 @@ const LocationsScreen = () => {
               placeholder="Search places on Google Maps..."
               onPress={handlePlaceSelect}
               query={{
-                key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+                key: EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
                 language: 'en',
                 components: 'country:gh', // Restrict to Ghana
               }}
@@ -545,6 +546,45 @@ const LocationsScreen = () => {
           style={styles.map}
           region={mapRegion}
           onRegionChangeComplete={setMapRegion}
+          onLongPress={(e) => {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            Alert.alert(
+              'Add New Location',
+              `Do you want to add a location at this point?`,
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Add Location',
+                  onPress: () => {
+                    const newLocation = {
+                      id: Date.now().toString(),
+                      name: 'New Location',
+                      address: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`,
+                      lat: latitude,
+                      lng: longitude,
+                      type: 'Pharmacy',
+                      status: 'Available',
+                      rating: 0,
+                      distance: '0 km',
+                      phone: '',
+                      image: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=100',
+                      isUserAdded: true
+                    };
+                    handleAddLocation(newLocation);
+                  }
+                }
+              ]
+            );
+          }}
+          onPress={(e) => {
+            // Deselect location when tapping on empty map space
+            if (e.nativeEvent.action !== 'marker-press') {
+              setSelectedLocation(null);
+            }
+          }}
         >
           {allDisplayLocations.map((location) => (
             <Marker
@@ -555,24 +595,85 @@ const LocationsScreen = () => {
               onPress={() => setSelectedLocation(location)}
               pinColor={location.isSearchResult ? '#ff6b6b' : '#197ce5'}
             >
-              <Callout>
+              <Callout onPress={() => {
+                if (location.isSearchResult) {
+                  handleAddSearchResult(location);
+                } else {
+                  handleLocationPress(location);
+                }
+              }}>
                 <View style={styles.calloutContainer}>
                   <Text style={styles.calloutTitle}>{location.name}</Text>
                   <Text style={styles.calloutStatus}>{location.status}</Text>
                   <Text style={styles.calloutAddress}>{location.address}</Text>
-                  {location.isSearchResult && (
+                  <View style={styles.calloutActions}>
                     <TouchableOpacity
-                      style={styles.addLocationButton}
-                      onPress={() => handleAddSearchResult(location)}
+                      style={[styles.calloutButton, { backgroundColor: '#10b98115' }]}
+                      onPress={() => handleNavigate(location)}
                     >
-                      <Text style={styles.addLocationButtonText}>Add to My Locations</Text>
+                      <Icon name="navigation" size={14} color="#10b981" />
+                      <Text style={[styles.calloutButtonText, { color: '#10b981' }]}>Navigate</Text>
                     </TouchableOpacity>
-                  )}
+                    {location.isSearchResult && (
+                      <TouchableOpacity
+                        style={[styles.calloutButton, { backgroundColor: '#4CAF5015' }]}
+                        onPress={() => handleAddSearchResult(location)}
+                      >
+                        <Icon name="plus" size={14} color="#4CAF50" />
+                        <Text style={[styles.calloutButtonText, { color: '#4CAF50' }]}>Add</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </Callout>
             </Marker>
           ))}
         </MapView>
+        
+        {/* Map Controls */}
+        <View style={styles.mapControls}>
+          <TouchableOpacity
+            style={[styles.mapControlButton, { backgroundColor: dynamicStyles.backgroundColor }]}
+            onPress={() => {
+              const newRegion = {
+                ...mapRegion,
+                latitudeDelta: mapRegion.latitudeDelta * 0.5,
+                longitudeDelta: mapRegion.longitudeDelta * 0.5,
+              };
+              mapRef.current?.animateToRegion(newRegion, 500);
+            }}
+          >
+            <Icon name="plus" size={20} color={dynamicStyles.textColor} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mapControlButton, { backgroundColor: dynamicStyles.backgroundColor }]}
+            onPress={() => {
+              const newRegion = {
+                ...mapRegion,
+                latitudeDelta: mapRegion.latitudeDelta * 2,
+                longitudeDelta: mapRegion.longitudeDelta * 2,
+              };
+              mapRef.current?.animateToRegion(newRegion, 500);
+            }}
+          >
+            <Icon name="minus" size={20} color={dynamicStyles.textColor} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mapControlButton, { backgroundColor: dynamicStyles.backgroundColor }]}
+            onPress={() => {
+              // Center on user's current location or default location
+              const defaultRegion = {
+                latitude: 5.6037,
+                longitude: -0.187,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              };
+              mapRef.current?.animateToRegion(defaultRegion, 1000);
+            }}
+          >
+            <Icon name="crosshair" size={20} color={dynamicStyles.textColor} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Locations List */}
@@ -797,6 +898,42 @@ const styles = StyleSheet.create({
   calloutAddress: {
     fontSize: 12,
     color: "#637588",
+    marginBottom: 8,
+  },
+  calloutActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calloutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    gap: 4,
+  },
+  calloutButtonText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  mapControls: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    gap: 8,
+  },
+  mapControlButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 8,
   },
   bottomSpacing: {
     height: 20,

@@ -26,6 +26,10 @@
       "favicon": "./src/assets/favicon.png"
     },
     "scheme": "medalert",
-    "plugins": ["expo-web-browser", "expo-camera"]
+    "plugins": [
+      "expo-web-browser",
+      "expo-camera",
+      "expo-maps"
+    ]
   }
 }

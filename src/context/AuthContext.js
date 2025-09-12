@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI, tokenManager, userManager, setAccessToken } from "../services/api";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { flushQueue } from '../services/persistence';
+import { EXPO_PUBLIC_BASE_URL } from "@env";
 
 const AuthContext = createContext();
 
@@ -137,7 +138,7 @@ export const AuthProvider = ({ children }) => {
         email: credentials.email, 
         password: credentials.password ? "***" : "MISSING" 
       });
-      console.log("🌐 Backend URL:", process.env.EXPO_PUBLIC_BASE_URL || "http://localhost:3000");
+      console.log("🌐 Backend URL:", EXPO_PUBLIC_BASE_URL || "http://localhost:3000");
       
       const response = await authAPI.login(credentials);
       console.log("📡 Login API response:", response);
@@ -377,11 +378,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(userData);
 
-      if (response.accessToken && response.refreshToken) {
+      if (response.accessToken) {
+        // Store tokens
         await tokenManager.storeTokens(
           response.accessToken,
-          response.refreshToken
+          response.refreshToken || ''
         );
+        // Set token immediately for axios instance
+        setAccessToken(response.accessToken);
       }
 
       if (response.user) {
