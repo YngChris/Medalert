@@ -7,6 +7,7 @@ import { LanguageProvider } from "./src/context/LanguageContext";
 import Toast from "react-native-toast-message";
 import KeyboardAvoidingWrapper from "./src/components/KeyboardAvoidingWrapper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SplashScreen from 'expo-splash-screen';
 import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
@@ -31,25 +32,45 @@ import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 const Stack = createNativeStackNavigator();
 const NAV_STATE_KEY = "navState_v1";
 
+// Keep the splash screen visible while loading resources
+SplashScreen.preventAutoHideAsync();
+
 export default function App() {
   const [initialNavState, setInitialNavState] = useState();
   const [navReady, setNavReady] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
 
   // Load persisted navigation state early
   useEffect(() => {
     (async () => {
       try {
+        // Prepare app resources
         const saved = await AsyncStorage.getItem(NAV_STATE_KEY);
         if (saved) {
           setInitialNavState(JSON.parse(saved));
         }
+        
+        // Simulate loading time for resources
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
       } catch (e) {
         // ignore parse/storage errors
+        console.warn(e);
       } finally {
         setNavReady(true);
+        setAppIsReady(true);
       }
     })();
   }, []);
+
+  // Hide splash screen when app is ready
+  useEffect(() => {
+    if (appIsReady) {
+      (async () => {
+        await SplashScreen.hideAsync();
+      })();
+    }
+  }, [appIsReady]);
 
   const handleStateChange = useCallback(async (state) => {
     try {

@@ -1,16 +1,17 @@
 // Google OAuth Configuration for MedAlert
 // Replace these with your actual Google OAuth credentials
+import { EXPO_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "@env";
 
 // For development, you can hardcode these values
 // For production, use environment variables (.env file)
 export const GOOGLE_AUTH_CONFIG = {
   // Your Google OAuth 2.0 Client ID
   // Get this from: https://console.developers.google.com/apis/credentials
-  CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID",
+  CLIENT_ID: EXPO_PUBLIC_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID",
   
   // Your Google OAuth 2.0 Client Secret
   // Get this from: https://console.developers.google.com/apis/credentials
-  CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "YOUR_GOOGLE_CLIENT_SECRET",
+  CLIENT_SECRET: GOOGLE_CLIENT_SECRET || "YOUR_GOOGLE_CLIENT_SECRET",
   
   // OAuth scopes - these determine what user data you can access
   SCOPES: [

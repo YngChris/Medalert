@@ -18,6 +18,8 @@ import { useLanguage } from "../context/LanguageContext";
 import Icon from "react-native-vector-icons/Feather";
 import { useAuthRequest, makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { EXPO_PUBLIC_GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } from "@env";
 
 // Complete the auth session for web
 WebBrowser.maybeCompleteAuthSession();
@@ -52,7 +54,7 @@ export default function LoginScreen() {
 
   const [request, response, promptAsync] = useAuthRequest(
     {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID', // Replace with your actual Google Client ID
+      clientId: EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID', // Replace with your actual Google Client ID
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: 'code',
@@ -63,6 +65,45 @@ export default function LoginScreen() {
     },
     { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
   );
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('rememberEmail');
+      const savedPassword = await AsyncStorage.getItem('rememberPassword');
+      const savedRememberMe = await AsyncStorage.getItem('rememberMe');
+      
+      if (savedRememberMe === 'true' && savedEmail) {
+        setForm({
+          email: savedEmail,
+          password: savedPassword || ''
+        });
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.log('Error loading saved credentials:', error);
+    }
+  };
+
+  const saveCredentials = async (email, password) => {
+    try {
+      if (rememberMe) {
+        await AsyncStorage.setItem('rememberEmail', email);
+        await AsyncStorage.setItem('rememberPassword', password);
+        await AsyncStorage.setItem('rememberMe', 'true');
+      } else {
+        await AsyncStorage.removeItem('rememberEmail');
+        await AsyncStorage.removeItem('rememberPassword');
+        await AsyncStorage.setItem('rememberMe', 'false');
+      }
+    } catch (error) {
+      console.log('Error saving credentials:', error);
+    }
+  };
 
   // Handle Google OAuth response
   useEffect(() => {
@@ -158,6 +199,8 @@ export default function LoginScreen() {
       const success = await login({ email: form.email, password: form.password });
       if (success) {
         console.log("Login successful");
+        // Save credentials if remember me is checked
+        await saveCredentials(form.email, form.password);
         // Navigate to Home immediately after successful login
         navigation.reset({ index: 0, routes: [{ name: "Home" }] });
         // Fallback navigate to ensure transition in all cases
@@ -206,8 +249,8 @@ export default function LoginScreen() {
         },
         body: new URLSearchParams({
           code,
-          client_id: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID', // Replace with your actual Google Client ID
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET', // Replace with your actual Google Client Secret
+          client_id: EXPO_PUBLIC_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID', // Replace with your actual Google Client ID
+          client_secret: GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET', // Replace with your actual Google Client Secret
           redirect_uri: redirectUri,
           grant_type: 'authorization_code',
         }),
